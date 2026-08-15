@@ -4,7 +4,6 @@ import {
   Info,
   Palette,
   MonitorPlay,
-  Keyboard,
   Library,
   Server,
   Computer,
