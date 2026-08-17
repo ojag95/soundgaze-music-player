@@ -64,11 +64,17 @@ const LazyImage = ({
 
 const TimelineView: React.FC = () => {
   const { t } = useTranslation();
-  const { libraryTree, playSpecific, selectedArtist, currentTrack } = usePlayerStore();
-  const { basePath, coverCacheBuster } = useLibrarySettingsStore();
+
+  const libraryTree = usePlayerStore((s) => s.libraryTree);
+  const selectedArtist = usePlayerStore((s) => s.selectedArtist);
+  const currentTrack = usePlayerStore((s) => s.currentTrack);
+  
+  const playSpecific = usePlayerStore((s) => s.playSpecific);
+  
+  const basePath = useLibrarySettingsStore((s) => s.basePath);
+  const coverCacheBuster = useLibrarySettingsStore((s) => s.coverCacheBuster);
 
   const [selectedAlbum, setSelectedAlbum] = useState<TimelineAlbum | null>(null);
-  
   const [selectedYearFilter, setSelectedYearFilter] = useState<number | "all">("all");
 
   const sliderRef = useRef<HTMLDivElement>(null);
@@ -388,7 +394,6 @@ const TimelineView: React.FC = () => {
           </div>
         </div>
       )}
-
     </div>
   );
 };

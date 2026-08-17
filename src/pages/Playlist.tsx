@@ -18,21 +18,20 @@ import TableHeader from "../components/shared/TableHeader";
 import { useResponsiveSidebar } from "../hooks/useResponsiveSidebar";
 
 const Playlists = () => {
-  const {
-    playlists,
-    selectedPlaylist,
-    selectPlaylist,
-    currentViewTracks,
-    playSpecific,
-    currentTrack,
-    favorites,
-    toggleFavorite,
-    isFavoritesView,
-    selectFavorites,
-    addToPlaylist,
-    removeTrackFromPlaylist,
-    deletePlaylist,
-  } = usePlayerStore();
+  const playlists = usePlayerStore((s) => s.playlists);
+  const selectedPlaylist = usePlayerStore((s) => s.selectedPlaylist);
+  const currentViewTracks = usePlayerStore((s) => s.currentViewTracks);
+  const currentTrack = usePlayerStore((s) => s.currentTrack);
+  const favorites = usePlayerStore((s) => s.favorites);
+  const isFavoritesView = usePlayerStore((s) => s.isFavoritesView);
+
+  const selectPlaylist = usePlayerStore((s) => s.selectPlaylist);
+  const playSpecific = usePlayerStore((s) => s.playSpecific);
+  const toggleFavorite = usePlayerStore((s) => s.toggleFavorite);
+  const selectFavorites = usePlayerStore((s) => s.selectFavorites);
+  const addToPlaylist = usePlayerStore((s) => s.addToPlaylist);
+  const removeTrackFromPlaylist = usePlayerStore((s) => s.removeTrackFromPlaylist);
+  const deletePlaylist = usePlayerStore((s) => s.deletePlaylist);
 
   const [isScrolled, setIsScrolled] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -45,7 +44,9 @@ const Playlists = () => {
 
   const parentRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const { visibleColumns } = useLibrarySettingsStore();
+  
+  const visibleColumns = useLibrarySettingsStore((s) => s.visibleColumns);
+  
   const { t } = useTranslation();
 
   useEffect(() => {

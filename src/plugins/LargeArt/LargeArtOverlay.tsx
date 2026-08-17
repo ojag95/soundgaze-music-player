@@ -13,28 +13,103 @@ const formatTime = (secs: number) => {
   return `${m}:${s.toString().padStart(2, "0")}`;
 };
 
+const LargeArtProgressBar = ({ isLight }: { isLight: boolean }) => {
+  const globalElapsed = usePlayerStore((s) => s.elapsedSecs);
+  const totalSecs = usePlayerStore((s) => s.totalSecs);
+  const currentTrack = usePlayerStore((s) => s.currentTrack);
+  const state = usePlayerStore((s) => s.state);
+  const seekTo = usePlayerStore((s) => s.seekTo);
+
+  const [isDraggingTime, setIsDraggingTime] = useState(false);
+  const [localElapsed, setLocalElapsed] = useState(globalElapsed);
+
+  useEffect(() => {
+    if (!isDraggingTime) setLocalElapsed(globalElapsed);
+  }, [globalElapsed, isDraggingTime]);
+
+useEffect(() => {
+    if (state !== 'Play') return;
+    const timer = setInterval(() => {
+      setLocalElapsed(usePlayerStore.getState().getRealElapsedTime());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [state, isDraggingTime]);
+
+  const displaySecs = localElapsed;
+  const timePercentage = totalSecs > 0 ? (displaySecs / totalSecs) * 100 : 0;
+  const scaleFraction = totalSecs > 0 ? displaySecs / totalSecs : 0;
+
+  return (
+    <div className={`w-full flex items-center gap-3 text-xs sm:text-sm font-variant-numeric mb-6 transition-colors duration-1000 ${isLight ? 'text-black/70' : 'text-white/70'}`}>
+      <span className="w-10 text-right md:text-left">{formatTime(displaySecs)}</span>
+
+      <div className="relative flex-1 h-1.5 md:h-2 flex items-center group cursor-pointer">
+        <div className={`absolute inset-0 border rounded-full overflow-hidden pointer-events-none transition-colors duration-1000 transform-gpu ${isLight ? 'bg-black/10 border-black/10' : 'bg-white/10 border-white/10'}`}>
+          <div
+            className={`h-full origin-left will-change-transform transition-colors duration-1000 ${isLight ? 'bg-black' : 'bg-white'}`}
+            style={{
+              transform: `scaleX(${scaleFraction})`,
+              transition: isDraggingTime ? "none" : "transform 1s linear",
+            }}
+          />
+        </div>
+
+        <div
+          className={`absolute w-3 h-3 md:w-4 md:h-4 rounded-full top-1/2 -translate-y-1/2 pointer-events-none transition-all duration-200 shadow-sm will-change-transform transform-gpu ${
+            isLight ? 'bg-black' : 'bg-white'
+          } ${
+            isDraggingTime
+              ? "opacity-100 scale-125"
+              : "opacity-0 group-hover:opacity-100 scale-100"
+          }`}
+          style={{ left: `calc(${timePercentage}% - 6px)` }}
+        />
+
+        <input
+          type="range"
+          min="0"
+          max={totalSecs || 100}
+          value={displaySecs}
+          disabled={!currentTrack || totalSecs === 0}
+          onPointerDown={() => setIsDraggingTime(true)}
+          onPointerUp={(e) => {
+            setIsDraggingTime(false);
+            seekTo(Number(e.currentTarget.value));
+          }}
+          onChange={(e) => setLocalElapsed(Number(e.target.value))}
+          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer m-0 disabled:cursor-not-allowed"
+        />
+      </div>
+
+      <span className="w-10 text-left md:text-right">
+        {currentTrack ? formatTime(totalSecs) : "0:00"}
+      </span>
+    </div>
+  );
+};
+
 const LargeArtOverlay: React.FC = () => {
-  const { currentTrack, state, togglePlay, playNext, playPrev, elapsedSecs, totalSecs, seekTo } = usePlayerStore();
-  const { basePath, coverCacheBuster } = useLibrarySettingsStore();
-  const { closeLargeArt } = useUIStore();
+  const currentTrack = usePlayerStore((s) => s.currentTrack);
+  const state = usePlayerStore((s) => s.state);
+  const togglePlay = usePlayerStore((s) => s.togglePlay);
+  const playNext = usePlayerStore((s) => s.playNext);
+  const playPrev = usePlayerStore((s) => s.playPrev);
+
+  const basePath = useLibrarySettingsStore((s) => s.basePath);
+  const coverCacheBuster = useLibrarySettingsStore((s) => s.coverCacheBuster);
+  const closeLargeArt = useUIStore((s) => s.closeLargeArt);
   
-  const { largeArtSettings, isPluginActive } = usePluginStore();
+  const largeArtSettings = usePluginStore((s) => s.largeArtSettings);
+  const isPluginActive = usePluginStore((s) => s.isPluginActive);
+  
   const isLyricsActive = isPluginActive('lyrics'); 
   const [showLyrics, setShowLyrics] = useState(true); 
   
   const displayLyrics = isLyricsActive && showLyrics;
-  
   const { backgroundType, enableBlur, enableAnimation, dynamicTheme } = largeArtSettings;
 
   const [imgError, setImgError] = useState(false);
   const [isLightState, setIsLightState] = useState(false);
-
-  const [isDraggingTime, setIsDraggingTime] = useState(false);
-  const [localElapsedSecs, setLocalElapsedSecs] = useState(elapsedSecs);
-
-  useEffect(() => {
-    if (!isDraggingTime) setLocalElapsedSecs(elapsedSecs);
-  }, [elapsedSecs, isDraggingTime]);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -83,9 +158,6 @@ const LargeArtOverlay: React.FC = () => {
   const isPlaying = state === "Play";
   const coverUrl = `cover://localhost/?path=${encodeURIComponent(currentTrack.path)}&base=${encodeURIComponent(basePath)}&t=${coverCacheBuster}`;
   const isLight = dynamicTheme ? isLightState : false; 
-
-  const displaySecs = isDraggingTime ? localElapsedSecs : elapsedSecs;
-  const timePercentage = totalSecs > 0 ? (displaySecs / totalSecs) * 100 : 0;
 
   return (
     <div 
@@ -163,7 +235,9 @@ const LargeArtOverlay: React.FC = () => {
                 className="w-full h-full object-cover shadow-[0_0_40px_rgba(0,0,0,0.6)]"
               />
             ) : (
-              <Disc3 size={80} className={`${isLight ? 'text-black/20' : 'text-white/20'} animate-[spin_10s_linear_infinite]`} />
+              <div className={`flex items-center justify-center transform-gpu will-change-transform ${isPlaying ? 'animate-[spin_10s_linear_infinite]' : ''}`}>
+                <Disc3 size={80} className={isLight ? 'text-black/20' : 'text-white/20'} />
+              </div>
             )}
           </div>
 
@@ -180,51 +254,7 @@ const LargeArtOverlay: React.FC = () => {
               </p>
             </div>
 
-            <div className={`w-full flex items-center gap-3 text-xs sm:text-sm font-variant-numeric mb-6 transition-colors duration-1000 ${isLight ? 'text-black/70' : 'text-white/70'}`}>
-              <span className="w-10 text-right md:text-left">{formatTime(displaySecs)}</span>
-
-              <div className="relative flex-1 h-1.5 md:h-2 flex items-center group cursor-pointer">
-                <div className={`absolute inset-0 border rounded-full overflow-hidden pointer-events-none transition-colors duration-1000 ${isLight ? 'bg-black/10 border-black/10' : 'bg-white/10 border-white/10'}`}>
-                  <div
-                    className={`h-full transition-colors duration-1000 ${isLight ? 'bg-black' : 'bg-white'}`}
-                    style={{
-                      width: `${timePercentage}%`,
-                      transition: isDraggingTime ? "none" : "width 1s linear",
-                    }}
-                  />
-                </div>
-
-                <div
-                  className={`absolute w-3 h-3 md:w-4 md:h-4 rounded-full top-1/2 -translate-y-1/2 pointer-events-none transition-all duration-200 shadow-sm ${
-                    isLight ? 'bg-black' : 'bg-white'
-                  } ${
-                    isDraggingTime
-                      ? "opacity-100 scale-125"
-                      : "opacity-0 group-hover:opacity-100 scale-100"
-                  }`}
-                  style={{ left: `calc(${timePercentage}% - 6px)` }}
-                />
-
-                <input
-                  type="range"
-                  min="0"
-                  max={totalSecs || 100}
-                  value={displaySecs}
-                  disabled={!currentTrack || totalSecs === 0}
-                  onPointerDown={() => setIsDraggingTime(true)}
-                  onPointerUp={(e) => {
-                    setIsDraggingTime(false);
-                    seekTo(Number(e.currentTarget.value));
-                  }}
-                  onChange={(e) => setLocalElapsedSecs(Number(e.target.value))}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer m-0 disabled:cursor-not-allowed"
-                />
-              </div>
-
-              <span className="w-10 text-left md:text-right">
-                {currentTrack ? formatTime(totalSecs) : "0:00"}
-              </span>
-            </div>
+            <LargeArtProgressBar isLight={isLight} />
 
             <div className="flex items-center gap-6 justify-center md:justify-start">
               <button onClick={playPrev} className={`transition-colors hover:scale-110 transform ${isLight ? 'text-black/60 hover:text-black' : 'text-white/60 hover:text-white'}`}>

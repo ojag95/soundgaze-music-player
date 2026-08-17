@@ -9,8 +9,8 @@ export interface TrackData {
   artist: string;
   album: string;
   time: string;
-  genre?: string;      
-  date?: string;       
+  genre?: string;
+  date?: string;
   trackNumber?: string;
   lyrics?: string;
 }
@@ -46,7 +46,6 @@ interface PlayerState {
   playSpecific: (path: string, tracksContext?: TrackData[]) => Promise<void>;
   playNext: () => Promise<void>;
   playPrev: () => Promise<void>;
-  tickElapsed: () => void;
   queue: TrackData[];
   fetchQueue: () => Promise<void>;
   reorderQueue: (startIndex: number, endIndex: number) => Promise<void>;
@@ -59,6 +58,8 @@ interface PlayerState {
   removeTrackFromPlaylist: (playlistName: string, path: string) => void;
   deletePlaylist: (playlistName: string) => void;
   seekTo: (seconds: number) => Promise<void>;
+  lastUpdateTimestamp: number;
+  getRealElapsedTime: () => number;
 }
 
 export const usePlayerStore = create<PlayerState>()(
@@ -81,6 +82,7 @@ export const usePlayerStore = create<PlayerState>()(
       queue: [],
       playlists: {},
       selectedPlaylist: null,
+      lastUpdateTimestamp: Date.now(),
 
       setLibrary: (tracks) => {
         const tree: LibraryTree = {};
@@ -311,13 +313,6 @@ export const usePlayerStore = create<PlayerState>()(
         }
       },
 
-      tickElapsed: () => {
-        const { state, elapsedSecs, totalSecs } = get();
-        if (state === 'Play' && elapsedSecs < totalSecs) {
-          set({ elapsedSecs: elapsedSecs + 1 });
-        }
-      },
-
       fetchQueue: async () => {
         try {
           const queueData: TrackData[] = await invoke('mpd_get_queue');
@@ -359,22 +354,31 @@ export const usePlayerStore = create<PlayerState>()(
 
       seekTo: async (seconds: number) => {
         try {
-          set({ elapsedSecs: seconds });
+          set({ elapsedSecs: seconds, lastUpdateTimestamp: Date.now() }); 
           await invoke('mpd_seek', { seconds });
         } catch (error) {
           console.error("Error al adelantar la canción:", error);
         }
       },
+      getRealElapsedTime: () => {
+        const { state, elapsedSecs, lastUpdateTimestamp, totalSecs } = get();
+        if (state === 'Play') {
+          const diffSecs = Math.floor((Date.now() - lastUpdateTimestamp) / 1000);
+          return Math.min(elapsedSecs + diffSecs, totalSecs);
+        }
+        return elapsedSecs;
+      },
+
     }),
     {
       name: 'soundgaze-player-storage',
       storage: createJSONStorage(() => idbStorage),
-      partialize: (state) => ({ 
+      partialize: (state) => ({
         libraryTree: state.libraryTree,
         artists: state.artists,
-        favorites: state.favorites, 
-        volume: state.volume, 
-        playlists: state.playlists 
+        favorites: state.favorites,
+        volume: state.volume,
+        playlists: state.playlists
       }),
     }
   )

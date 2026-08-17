@@ -25,26 +25,109 @@ const formatTime = (secs: number) => {
   return `${m}:${s.toString().padStart(2, "0")}`;
 };
 
+function usePageVisibility() {
+  const [isVisible, setIsVisible] = useState(!document.hidden);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => setIsVisible(!document.hidden);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, []);
+
+  return isVisible;
+}
+
+const ProgressBar = () => {
+  const globalElapsed = usePlayerStore((s) => s.elapsedSecs);
+  const totalSecs = usePlayerStore((s) => s.totalSecs);
+  const currentTrack = usePlayerStore((s) => s.currentTrack);
+  const state = usePlayerStore((s) => s.state);
+  const seekTo = usePlayerStore((s) => s.seekTo);
+
+  const isVisible = usePageVisibility(); 
+
+  const [isDraggingTime, setIsDraggingTime] = useState(false);
+  const [localElapsed, setLocalElapsed] = useState(globalElapsed);
+
+  useEffect(() => {
+    if (!isDraggingTime) {
+      setLocalElapsed(globalElapsed);
+    }
+  }, [globalElapsed, isDraggingTime]);
+
+  useEffect(() => {
+    if (state !== 'Play' || !isVisible) return; 
+    
+    const timer = setInterval(() => {
+      setLocalElapsed(usePlayerStore.getState().getRealElapsedTime());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [state, isDraggingTime, isVisible]); 
+
+  const displaySecs = localElapsed;
+  const timePercentage = totalSecs > 0 ? (displaySecs / totalSecs) * 100 : 0;
+  const scaleFraction = totalSecs > 0 ? displaySecs / totalSecs : 0;
+
+  return (
+    <div className="w-full flex items-center gap-3 text-xs text-muted font-variant-numeric">
+      <span className="w-8 text-right">{formatTime(displaySecs)}</span>
+
+      <div className="relative flex-1 h-1.5 flex items-center group cursor-pointer">
+        <div className="absolute inset-0 bg-background border border-divider/50 rounded-full overflow-hidden pointer-events-none transform-gpu">
+          <div
+            className="h-full bg-brand-primary origin-left will-change-transform"
+            style={{
+              transform: `scaleX(${scaleFraction})`,
+              transition: isDraggingTime ? "none" : "transform 1s linear",
+            }}
+          />
+        </div>
+
+        <div
+          className={`absolute w-3 h-3 bg-brand-primary rounded-full top-1/2 -translate-y-1/2 pointer-events-none transition-opacity shadow-sm will-change-transform transform-gpu ${
+            isDraggingTime ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+          }`}
+          style={{ left: `calc(${timePercentage}% - 6px)` }}
+        />
+
+        <input
+          type="range"
+          min="0"
+          max={totalSecs || 100}
+          value={displaySecs}
+          disabled={!currentTrack || totalSecs === 0}
+          onPointerDown={() => setIsDraggingTime(true)}
+          onPointerUp={(e) => {
+            setIsDraggingTime(false);
+            seekTo(Number(e.currentTarget.value));
+          }}
+          onChange={(e) => setLocalElapsed(Number(e.target.value))}
+          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer m-0 disabled:cursor-not-allowed"
+        />
+      </div>
+
+      <span className="w-8 text-left">
+        {currentTrack ? formatTime(totalSecs) : "0:00"}
+      </span>
+    </div>
+  );
+};
+
 export default function PlayerBar() {
-  const {
-    state,
-    elapsedSecs,
-    totalSecs,
-    currentTrack,
-    fetchState,
-    togglePlay,
-    playNext,
-    playPrev,
-    volume,
-    setVolume,
-    tickElapsed,
-    seekTo,
-  } = usePlayerStore();
+  const state = usePlayerStore((s) => s.state);
+  const currentTrack = usePlayerStore((s) => s.currentTrack);
+  const fetchState = usePlayerStore((s) => s.fetchState);
+  const togglePlay = usePlayerStore((s) => s.togglePlay);
+  const playNext = usePlayerStore((s) => s.playNext);
+  const playPrev = usePlayerStore((s) => s.playPrev);
+  const volume = usePlayerStore((s) => s.volume);
+  const setVolume = usePlayerStore((s) => s.setVolume);
 
   const { basePath, coverCacheBuster } = useLibrarySettingsStore();
-
   const { isPluginActive } = usePluginStore();
   const { openLargeArt } = useUIStore();
+
+  const isVisible = usePageVisibility();
 
   const [imgError, setImgError] = useState(false);
   const [isQueueOpen, setIsQueueOpen] = useState(false);
@@ -52,16 +135,9 @@ export default function PlayerBar() {
   const [isDraggingVol, setIsDraggingVol] = useState(false);
   const [localVolume, setLocalVolume] = useState(volume);
 
-  const [isDraggingTime, setIsDraggingTime] = useState(false);
-  const [localElapsedSecs, setLocalElapsedSecs] = useState(elapsedSecs);
-
   useEffect(() => {
     if (!isDraggingVol) setLocalVolume(volume);
   }, [volume, isDraggingVol]);
-
-  useEffect(() => {
-    if (!isDraggingTime) setLocalElapsedSecs(elapsedSecs);
-  }, [elapsedSecs, isDraggingTime]);
 
   useEffect(() => {
     setImgError(false);
@@ -76,6 +152,7 @@ export default function PlayerBar() {
         elapsedSecs: payload.elapsed_secs,
         totalSecs: payload.total_secs,
         currentTrack: payload.current_track,
+        lastUpdateTimestamp: Date.now(),
       });
     });
     return () => {
@@ -83,19 +160,14 @@ export default function PlayerBar() {
     };
   }, []);
 
-  useEffect(() => {
-    const timer = setInterval(() => tickElapsed(), 1000);
-    return () => clearInterval(timer);
-  }, [tickElapsed]);
-
   const isPlaying = state === "Play";
+  
+  const shouldAnimate = isPlaying && isVisible;
 
   const coverUrl = currentTrack?.path
     ? `cover://localhost/?path=${encodeURIComponent(currentTrack.path)}&base=${encodeURIComponent(basePath)}&t=${coverCacheBuster}`
     : null;
 
-  const displaySecs = isDraggingTime ? localElapsedSecs : elapsedSecs;
-  const timePercentage = totalSecs > 0 ? (displaySecs / totalSecs) * 100 : 0;
   const volPercentage = localVolume;
 
   const handleInfoClick = () => {
@@ -107,7 +179,7 @@ export default function PlayerBar() {
   return (
     <>
       <footer
-        className={`absolute bottom-4 left-4 right-4 h-24 rounded-lg bg-surface/30 backdrop-blur-xl border border-divider px-4 flex items-center justify-between z-40 md:z-50 shadow-lg transition-all duration-500 ease-in-out ${
+        className={`absolute bottom-4 left-4 right-4 h-24 rounded-lg bg-surface/95 border border-divider px-4 flex items-center justify-between z-40 md:z-50 shadow-lg transition-all duration-500 ease-in-out transform-gpu ${
           currentTrack
             ? "translate-y-0 opacity-100"
             : "translate-y-[150%] opacity-0 pointer-events-none"
@@ -127,10 +199,11 @@ export default function PlayerBar() {
                 className="w-full h-full object-cover animate-in fade-in duration-300"
               />
             ) : (
-              <Disc3
-                size={24}
-                className={isPlaying ? "animate-[spin_4s_linear_infinite]" : ""}
-              />
+              <div
+                className={`flex items-center justify-center transform-gpu will-change-transform ${shouldAnimate ? "animate-[spin_4s_linear_infinite]" : ""}`}
+              >
+                <Disc3 size={24} />
+              </div>
             )}
           </div>
           <div className="min-w-0">
@@ -156,7 +229,7 @@ export default function PlayerBar() {
             <button
               onClick={togglePlay}
               disabled={!currentTrack}
-              className="w-9 h-9 rounded-full bg-content text-background flex items-center justify-center hover:scale-105 transition-transform shadow-md disabled:opacity-50"
+              className="w-9 h-9 rounded-full bg-content text-background flex items-center justify-center hover:scale-105 transition-transform shadow-md disabled:opacity-50 transform-gpu"
             >
               {isPlaying ? (
                 <Pause size={18} fill="currentColor" />
@@ -172,49 +245,7 @@ export default function PlayerBar() {
             </button>
           </div>
 
-          <div className="w-full flex items-center gap-3 text-xs text-muted font-variant-numeric">
-            <span className="w-8 text-right">{formatTime(displaySecs)}</span>
-
-            <div className="relative flex-1 h-1.5 flex items-center group cursor-pointer">
-              <div className="absolute inset-0 bg-background border border-divider/50 rounded-full overflow-hidden pointer-events-none">
-                <div
-                  className="h-full bg-brand-primary"
-                  style={{
-                    width: `${timePercentage}%`,
-                    transition: isDraggingTime ? "none" : "width 1s linear",
-                  }}
-                />
-              </div>
-
-              <div
-                className={`absolute w-3 h-3 bg-brand-primary rounded-full top-1/2 -translate-y-1/2 pointer-events-none transition-opacity shadow-sm ${
-                  isDraggingTime
-                    ? "opacity-100"
-                    : "opacity-0 group-hover:opacity-100"
-                }`}
-                style={{ left: `calc(${timePercentage}% - 6px)` }}
-              />
-
-              <input
-                type="range"
-                min="0"
-                max={totalSecs || 100}
-                value={displaySecs}
-                disabled={!currentTrack || totalSecs === 0}
-                onPointerDown={() => setIsDraggingTime(true)}
-                onPointerUp={(e) => {
-                  setIsDraggingTime(false);
-                  seekTo(Number(e.currentTarget.value));
-                }}
-                onChange={(e) => setLocalElapsedSecs(Number(e.target.value))}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer m-0 disabled:cursor-not-allowed"
-              />
-            </div>
-
-            <span className="w-8 text-left">
-              {currentTrack ? formatTime(totalSecs) : "0:00"}
-            </span>
-          </div>
+          <ProgressBar />
         </div>
 
         <div className="flex items-center justify-end gap-3 w-1/4">
@@ -246,13 +277,13 @@ export default function PlayerBar() {
           <div className="relative w-24 h-1.5 flex items-center group cursor-pointer">
             <div className="absolute inset-0 bg-background border border-divider/50 rounded-full overflow-hidden pointer-events-none">
               <div
-                className="h-full bg-brand-primary transition-all duration-75"
+                className="h-full bg-brand-primary transition-all duration-75 transform-gpu"
                 style={{ width: `${volPercentage}%` }}
               />
             </div>
 
             <div
-              className={`absolute w-3 h-3 bg-brand-primary rounded-full top-1/2 -translate-y-1/2 pointer-events-none transition-opacity shadow-sm ${
+              className={`absolute w-3 h-3 bg-brand-primary rounded-full top-1/2 -translate-y-1/2 pointer-events-none transition-opacity shadow-sm transform-gpu ${
                 isDraggingVol
                   ? "opacity-100"
                   : "opacity-0 group-hover:opacity-100"
