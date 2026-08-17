@@ -30,8 +30,11 @@ const GraphView: React.FC = () => {
   const { t } = useTranslation();
 
   const { nodes, edges, initializeGraph, expandNode } = useGraphStore();
-  const { playSpecific, libraryTree, selectedArtist, selectedAlbum } =
-    usePlayerStore();
+  const playSpecific = usePlayerStore((s) => s.playSpecific);
+  const libraryTree = usePlayerStore((s) => s.libraryTree);
+  const selectedArtist = usePlayerStore((s) => s.selectedArtist);
+  const selectedAlbum = usePlayerStore((s) => s.selectedAlbum);
+
   const { basePath, coverCacheBuster } = useLibrarySettingsStore();
 
   const [hoveredAlbum, setHoveredAlbum] = useState<{

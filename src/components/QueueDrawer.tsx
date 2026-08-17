@@ -16,8 +16,11 @@ interface QueueDrawerProps {
 }
 
 export default function QueueDrawer({ isOpen, onClose }: QueueDrawerProps) {
-  const { queue, fetchQueue, currentTrack, reorderQueue, playFromQueue } =
-    usePlayerStore();
+  const queue = usePlayerStore((s) => s.queue);
+  const currentTrack = usePlayerStore((s) => s.currentTrack);
+  const fetchQueue = usePlayerStore((s) => s.fetchQueue);
+  const reorderQueue = usePlayerStore((s) => s.reorderQueue);
+  const playFromQueue = usePlayerStore((s) => s.playFromQueue);
   const { t } = useTranslation();
 
   const parentRef = useRef<HTMLDivElement>(null);

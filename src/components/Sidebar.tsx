@@ -26,14 +26,13 @@ export default function Sidebar({ isMobileOpen, closeMobile }: SidebarProps) {
   const { openSettings } = useUIStore();
   const { t } = useTranslation();
 
-  const {
-    playlists,
-    selectPlaylist,
-    selectFavorites,
-    isFavoritesView,
-    selectedPlaylist,
-    currentTrack,
-  } = usePlayerStore();
+  const playlists = usePlayerStore((s) => s.playlists);
+  const selectedPlaylist = usePlayerStore((s) => s.selectedPlaylist);
+  const isFavoritesView = usePlayerStore((s) => s.isFavoritesView);
+  const currentTrack = usePlayerStore((s) => s.currentTrack);
+
+  const selectPlaylist = usePlayerStore((s) => s.selectPlaylist);
+  const selectFavorites = usePlayerStore((s) => s.selectFavorites);
 
   const { isPluginActive } = usePluginStore();
   const isGraphActive = isPluginActive("genre-explorer");

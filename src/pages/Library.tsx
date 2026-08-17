@@ -1,9 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import {
-  ChevronRight,
-  Waypoints,
-  Timeline,
-} from "lucide-react";
+import { ChevronRight, Waypoints, Timeline } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { usePlayerStore, TrackData } from "../store/playerStore";
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -19,24 +15,23 @@ import TableHeader from "../components/shared/TableHeader";
 import { useResponsiveSidebar } from "../hooks/useResponsiveSidebar";
 
 const Library = () => {
-  const {
-    libraryTree,
-    artists,
-    selectedArtist,
-    selectedAlbum,
-    currentViewTracks,
-    setLibrary,
-    selectArtist,
-    selectAlbum,
-    playSpecific,
-    currentTrack,
-    favorites,
-    isFavoritesView,
-    toggleFavorite,
-    restoreLibraryView,
-    playlists,
-    addToPlaylist,
-  } = usePlayerStore();
+const libraryTree = usePlayerStore((s) => s.libraryTree);
+  const artists = usePlayerStore((s) => s.artists);
+  const selectedArtist = usePlayerStore((s) => s.selectedArtist);
+  const selectedAlbum = usePlayerStore((s) => s.selectedAlbum);
+  const currentViewTracks = usePlayerStore((s) => s.currentViewTracks);
+  const currentTrack = usePlayerStore((s) => s.currentTrack);
+  const favorites = usePlayerStore((s) => s.favorites);
+  const isFavoritesView = usePlayerStore((s) => s.isFavoritesView);
+  const playlists = usePlayerStore((s) => s.playlists);
+
+  const setLibrary = usePlayerStore((s) => s.setLibrary);
+  const selectArtist = usePlayerStore((s) => s.selectArtist);
+  const selectAlbum = usePlayerStore((s) => s.selectAlbum);
+  const playSpecific = usePlayerStore((s) => s.playSpecific);
+  const toggleFavorite = usePlayerStore((s) => s.toggleFavorite);
+  const restoreLibraryView = usePlayerStore((s) => s.restoreLibraryView);
+  const addToPlaylist = usePlayerStore((s) => s.addToPlaylist);
   const { t } = useTranslation();
 
   const [isLoading, setIsLoading] = useState(true);
