@@ -475,6 +475,12 @@ fn mpd_set_replay_gain(mode: String, state: State<'_, MpdConfig>) -> Result<Stri
     Ok(format!("ReplayGain ajustado a modo: {}", mode))
 }
 
+#[tauri::command]
+fn mpd_shuffle( state: State<'_, MpdConfig>) -> Result<(), String> {
+    let mut conn = connect_to_mpd(&state)?;    
+    conn.shuffle(..).map_err(|e| format!("Error haciendo shuffle: {}", e))?;
+    Ok(())
+}
 // -----------------------------------------------------------------------------
 // OTROS COMANDOS
 // -----------------------------------------------------------------------------
@@ -758,6 +764,7 @@ pub fn run() {
             mpd_set_crossfade,
             mpd_set_replay_gain,
             greet,
+            mpd_shuffle
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

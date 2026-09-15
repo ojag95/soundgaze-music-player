@@ -10,6 +10,7 @@ import {
   Volume,
   Volume1,
   ListMusic,
+  Shuffle,
 } from "lucide-react";
 import { usePlayerStore } from "../store/playerStore";
 import { useLibrarySettingsStore } from "../store/librarySettingsStore";
@@ -122,6 +123,8 @@ export default function PlayerBar() {
   const playPrev = usePlayerStore((s) => s.playPrev);
   const volume = usePlayerStore((s) => s.volume);
   const setVolume = usePlayerStore((s) => s.setVolume);
+  const isShuffle = usePlayerStore((s) => s.isShuffle);
+  const toggleShuffle = usePlayerStore((s) => s.toggleShuffle);
 
   const { basePath, coverCacheBuster } = useLibrarySettingsStore();
   const { isPluginActive } = usePluginStore();
@@ -249,6 +252,18 @@ export default function PlayerBar() {
         </div>
 
         <div className="flex items-center justify-end gap-3 w-1/4">
+        <button
+              onClick={toggleShuffle}
+              className={`transition-colors hover:scale-110 transform ${
+                isShuffle 
+                  ? 'text-brand-primary drop-shadow-md' 
+                  : 'text-muted hover:text-content'
+              }`}
+            >
+              <Shuffle size={18} />
+            </button>
+
+           
           <button
             className="text-muted hover:text-content transition-colors"
             onClick={() => setIsQueueOpen(true)}

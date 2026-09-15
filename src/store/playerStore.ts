@@ -1,7 +1,8 @@
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import { invoke } from '@tauri-apps/api/core';
-import { idbStorage } from './idbStorage';
+import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
+import { invoke } from "@tauri-apps/api/core";
+import { idbStorage } from "./idbStorage";
+import { shuffleArray } from "../utils/playershuffle";
 
 export interface TrackData {
   path: string;
@@ -18,12 +19,14 @@ export interface TrackData {
 export type LibraryTree = Record<string, Record<string, TrackData[]>>;
 
 interface PlayerState {
-  state: 'Play' | 'Pause' | 'Stop' | 'Unknown';
+  state: "Play" | "Pause" | "Stop" | "Unknown";
   elapsedSecs: number;
   totalSecs: number;
   currentTrack: TrackData | null;
   volume: number;
   setVolume: (vol: number) => Promise<void>;
+  isShuffle: boolean;
+  toggleShuffle: () => void;
 
   libraryTree: LibraryTree;
   artists: string[];
@@ -65,7 +68,7 @@ interface PlayerState {
 export const usePlayerStore = create<PlayerState>()(
   persist(
     (set, get) => ({
-      state: 'Unknown',
+      state: "Unknown",
       elapsedSecs: 0,
       totalSecs: 0,
       currentTrack: null,
@@ -83,28 +86,53 @@ export const usePlayerStore = create<PlayerState>()(
       playlists: {},
       selectedPlaylist: null,
       lastUpdateTimestamp: Date.now(),
+      isShuffle: false,
+
+      toggleShuffle: async () => {
+        const newShuffleState = !get().isShuffle;
+        set({ isShuffle: newShuffleState });
+
+        if (newShuffleState) {
+          try {
+            await invoke("mpd_shuffle");
+
+            get().fetchQueue();
+          } catch (error) {
+            console.error("Error al revolver la cola en MPD:", error);
+          }
+        }
+      },
 
       setLibrary: (tracks) => {
         const tree: LibraryTree = {};
         tracks.forEach((track) => {
-          const art = track.artist || 'Desconocido';
-          const alb = track.album || 'Desconocido';
+          const art = track.artist || "Desconocido";
+          const alb = track.album || "Desconocido";
           if (!tree[art]) tree[art] = {};
           if (!tree[art][alb]) tree[art][alb] = [];
           tree[art][alb].push(track);
         });
 
-        const sortedArtists = Object.keys(tree).sort((a, b) => a.localeCompare(b));
+        const sortedArtists = Object.keys(tree).sort((a, b) =>
+          a.localeCompare(b),
+        );
 
-        const { isFavoritesView, selectedPlaylist, selectedArtist, selectedAlbum, favorites, playlists } = get();
+        const {
+          isFavoritesView,
+          selectedPlaylist,
+          selectedArtist,
+          selectedAlbum,
+          favorites,
+          playlists,
+        } = get();
 
         let viewTracks = tracks;
 
         if (isFavoritesView) {
-          viewTracks = tracks.filter(t => favorites.includes(t.path));
+          viewTracks = tracks.filter((t) => favorites.includes(t.path));
         } else if (selectedPlaylist) {
           const playlistPaths = playlists[selectedPlaylist] || [];
-          viewTracks = tracks.filter(t => playlistPaths.includes(t.path));
+          viewTracks = tracks.filter((t) => playlistPaths.includes(t.path));
         } else if (selectedArtist) {
           viewTracks = Object.values(tree[selectedArtist] || {}).flat();
           if (selectedAlbum) {
@@ -115,13 +143,15 @@ export const usePlayerStore = create<PlayerState>()(
         set({
           libraryTree: tree,
           artists: sortedArtists,
-          currentViewTracks: viewTracks
+          currentViewTracks: viewTracks,
         });
       },
 
       restoreLibraryView: () => {
         const { libraryTree, selectedArtist, selectedAlbum } = get();
-        let tracks = Object.values(libraryTree).flatMap(albums => Object.values(albums).flat());
+        let tracks = Object.values(libraryTree).flatMap((albums) =>
+          Object.values(albums).flat(),
+        );
 
         if (selectedArtist) {
           tracks = Object.values(libraryTree[selectedArtist] || {}).flat();
@@ -133,31 +163,57 @@ export const usePlayerStore = create<PlayerState>()(
         set({
           isFavoritesView: false,
           selectedPlaylist: null,
-          currentViewTracks: tracks
+          currentViewTracks: tracks,
         });
       },
 
       selectArtist: (artist) => {
         const { libraryTree } = get();
         if (!artist) {
-          const allTracks = Object.values(libraryTree).flatMap(albums => Object.values(albums).flat());
-          set({ selectedArtist: null, selectedAlbum: null, isFavoritesView: false, currentViewTracks: allTracks, selectedPlaylist: null });
+          const allTracks = Object.values(libraryTree).flatMap((albums) =>
+            Object.values(albums).flat(),
+          );
+          set({
+            selectedArtist: null,
+            selectedAlbum: null,
+            isFavoritesView: false,
+            currentViewTracks: allTracks,
+            selectedPlaylist: null,
+          });
           return;
         }
         const artistTracks = Object.values(libraryTree[artist] || {}).flat();
-        set({ selectedArtist: artist, selectedAlbum: null, isFavoritesView: false, currentViewTracks: artistTracks, selectedPlaylist: null });
+        set({
+          selectedArtist: artist,
+          selectedAlbum: null,
+          isFavoritesView: false,
+          currentViewTracks: artistTracks,
+          selectedPlaylist: null,
+        });
       },
 
       selectAlbum: (album) => {
         const { libraryTree, selectedArtist } = get();
         if (!selectedArtist) return;
         if (!album) {
-          const artistTracks = Object.values(libraryTree[selectedArtist] || {}).flat();
-          set({ selectedAlbum: null, isFavoritesView: false, currentViewTracks: artistTracks, selectedPlaylist: null });
+          const artistTracks = Object.values(
+            libraryTree[selectedArtist] || {},
+          ).flat();
+          set({
+            selectedAlbum: null,
+            isFavoritesView: false,
+            currentViewTracks: artistTracks,
+            selectedPlaylist: null,
+          });
           return;
         }
         const albumTracks = libraryTree[selectedArtist]?.[album] || [];
-        set({ selectedAlbum: album, isFavoritesView: false, currentViewTracks: albumTracks, selectedPlaylist: null });
+        set({
+          selectedAlbum: album,
+          isFavoritesView: false,
+          currentViewTracks: albumTracks,
+          selectedPlaylist: null,
+        });
       },
 
       toggleFavorite: (path) => {
@@ -165,29 +221,35 @@ export const usePlayerStore = create<PlayerState>()(
         const isFav = favorites.includes(path);
 
         const newFavorites = isFav
-          ? favorites.filter(p => p !== path)
+          ? favorites.filter((p) => p !== path)
           : [...favorites, path];
 
         set({ favorites: newFavorites });
 
         if (isFavoritesView) {
-          const allTracks = Object.values(libraryTree).flatMap(albums => Object.values(albums).flat());
-          const favTracks = allTracks.filter(t => newFavorites.includes(t.path));
+          const allTracks = Object.values(libraryTree).flatMap((albums) =>
+            Object.values(albums).flat(),
+          );
+          const favTracks = allTracks.filter((t) =>
+            newFavorites.includes(t.path),
+          );
           set({ currentViewTracks: favTracks });
         }
       },
 
       selectFavorites: () => {
         const { libraryTree, favorites } = get();
-        const allTracks = Object.values(libraryTree).flatMap(albums => Object.values(albums).flat());
-        const favTracks = allTracks.filter(t => favorites.includes(t.path));
+        const allTracks = Object.values(libraryTree).flatMap((albums) =>
+          Object.values(albums).flat(),
+        );
+        const favTracks = allTracks.filter((t) => favorites.includes(t.path));
 
         set({
           selectedArtist: null,
           selectedAlbum: null,
           isFavoritesView: true,
           currentViewTracks: favTracks,
-          selectedPlaylist: null
+          selectedPlaylist: null,
         });
       },
 
@@ -199,8 +261,8 @@ export const usePlayerStore = create<PlayerState>()(
           set({
             playlists: {
               ...playlists,
-              [playlistName]: [...currentList, path]
-            }
+              [playlistName]: [...currentList, path],
+            },
           });
         }
       },
@@ -209,29 +271,32 @@ export const usePlayerStore = create<PlayerState>()(
         const { libraryTree, playlists } = get();
         if (!name) return;
 
-        const allTracks = Object.values(libraryTree).flatMap(albums => Object.values(albums).flat());
+        const allTracks = Object.values(libraryTree).flatMap((albums) =>
+          Object.values(albums).flat(),
+        );
         const playlistPaths = playlists[name] || [];
-        const tracks = allTracks.filter(t => playlistPaths.includes(t.path));
+        const tracks = allTracks.filter((t) => playlistPaths.includes(t.path));
 
         set({
           selectedArtist: null,
           selectedAlbum: null,
           isFavoritesView: false,
           selectedPlaylist: name,
-          currentViewTracks: tracks
+          currentViewTracks: tracks,
         });
       },
 
       removeTrackFromPlaylist: (playlistName, path) => {
         const { playlists, selectedPlaylist, currentViewTracks } = get();
         const currentList = playlists[playlistName] || [];
-        const updatedList = currentList.filter(p => p !== path);
+        const updatedList = currentList.filter((p) => p !== path);
 
         set({
           playlists: { ...playlists, [playlistName]: updatedList },
-          currentViewTracks: selectedPlaylist === playlistName
-            ? currentViewTracks.filter(t => t.path !== path)
-            : currentViewTracks
+          currentViewTracks:
+            selectedPlaylist === playlistName
+              ? currentViewTracks.filter((t) => t.path !== path)
+              : currentViewTracks,
         });
       },
 
@@ -249,7 +314,7 @@ export const usePlayerStore = create<PlayerState>()(
 
       fetchState: async () => {
         try {
-          const payload: any = await invoke('mpd_get_current_state');
+          const payload: any = await invoke("mpd_get_current_state");
           set({
             state: payload.state,
             elapsedSecs: payload.elapsed_secs,
@@ -263,7 +328,7 @@ export const usePlayerStore = create<PlayerState>()(
 
       togglePlay: async () => {
         try {
-          await invoke('mpd_toggle_play');
+          await invoke("mpd_toggle_play");
           get().fetchState();
         } catch (error) {
           console.error(error);
@@ -275,22 +340,29 @@ export const usePlayerStore = create<PlayerState>()(
           let pathsToPlay = [path];
 
           if (tracksContext && tracksContext.length > 0) {
-            const startIndex = tracksContext.findIndex(t => t.path === path);
+            const startIndex = tracksContext.findIndex((t) => t.path === path);
 
             if (startIndex !== -1) {
-              pathsToPlay = tracksContext.slice(startIndex, startIndex + 200).map(t => t.path);
+              let upcoming = tracksContext.slice(
+                startIndex + 1,
+                startIndex + 200,
+              );
+              if (get().isShuffle) {
+                upcoming = shuffleArray(upcoming);
+              }
+              pathsToPlay = [path, ...upcoming.map((t) => t.path)];
             }
           }
-
-          await invoke('mpd_play_context', { paths: pathsToPlay });
+          await invoke("mpd_play_context", { paths: pathsToPlay });
+          get().fetchQueue();
         } catch (error) {
-          console.error(error);
+          console.error("Error al reproducir contexto:", error);
         }
       },
 
       playNext: async () => {
         try {
-          await invoke('mpd_next');
+          await invoke("mpd_next");
         } catch (error) {
           console.error("Error al saltar a la siguiente pista", error);
         }
@@ -298,7 +370,7 @@ export const usePlayerStore = create<PlayerState>()(
 
       playPrev: async () => {
         try {
-          await invoke('mpd_prev');
+          await invoke("mpd_prev");
         } catch (error) {
           console.error("Error al volver a la pista anterior", error);
         }
@@ -307,7 +379,7 @@ export const usePlayerStore = create<PlayerState>()(
       setVolume: async (vol: number) => {
         try {
           set({ volume: vol });
-          await invoke('mpd_set_volume', { volume: vol });
+          await invoke("mpd_set_volume", { volume: vol });
         } catch (error) {
           console.error("Error al ajustar volumen", error);
         }
@@ -315,7 +387,7 @@ export const usePlayerStore = create<PlayerState>()(
 
       fetchQueue: async () => {
         try {
-          const queueData: TrackData[] = await invoke('mpd_get_queue');
+          const queueData: TrackData[] = await invoke("mpd_get_queue");
           set({ queue: queueData });
         } catch (error) {
           console.error("Error al obtener la cola de reproducción", error);
@@ -331,7 +403,7 @@ export const usePlayerStore = create<PlayerState>()(
         set({ queue: newQueue });
 
         try {
-          await invoke('mpd_move_track', { from: startIndex, to: endIndex });
+          await invoke("mpd_move_track", { from: startIndex, to: endIndex });
         } catch (error) {
           console.error("Error al mover la pista en MPD", error);
           get().fetchQueue();
@@ -342,10 +414,10 @@ export const usePlayerStore = create<PlayerState>()(
         const { queue } = get();
         if (index < 0 || index >= queue.length) return;
 
-        const pathsToPlay = queue.slice(index, index + 200).map(t => t.path);
+        const pathsToPlay = queue.slice(index, index + 200).map((t) => t.path);
 
         try {
-          await invoke('mpd_play_context', { paths: pathsToPlay });
+          await invoke("mpd_play_context", { paths: pathsToPlay });
           get().fetchQueue();
         } catch (error) {
           console.error("Error al reproducir desde la cola", error);
@@ -354,32 +426,34 @@ export const usePlayerStore = create<PlayerState>()(
 
       seekTo: async (seconds: number) => {
         try {
-          set({ elapsedSecs: seconds, lastUpdateTimestamp: Date.now() }); 
-          await invoke('mpd_seek', { seconds });
+          set({ elapsedSecs: seconds, lastUpdateTimestamp: Date.now() });
+          await invoke("mpd_seek", { seconds });
         } catch (error) {
           console.error("Error al adelantar la canción:", error);
         }
       },
       getRealElapsedTime: () => {
         const { state, elapsedSecs, lastUpdateTimestamp, totalSecs } = get();
-        if (state === 'Play') {
-          const diffSecs = Math.floor((Date.now() - lastUpdateTimestamp) / 1000);
+        if (state === "Play") {
+          const diffSecs = Math.floor(
+            (Date.now() - lastUpdateTimestamp) / 1000,
+          );
           return Math.min(elapsedSecs + diffSecs, totalSecs);
         }
         return elapsedSecs;
       },
-
     }),
     {
-      name: 'soundgaze-player-storage',
+      name: "soundgaze-player-storage",
       storage: createJSONStorage(() => idbStorage),
       partialize: (state) => ({
         libraryTree: state.libraryTree,
         artists: state.artists,
         favorites: state.favorites,
         volume: state.volume,
-        playlists: state.playlists
+        playlists: state.playlists,
+        isShuffle: state.isShuffle,
       }),
-    }
-  )
+    },
+  ),
 );

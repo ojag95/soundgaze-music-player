@@ -63,8 +63,8 @@
   },
   "about": {
     "title": "Acerca de",
-    "version": "Versión 1.0.0",
-    "installerVersion": "Versión del instalador: 1.0.0",
+    "version": "Versión 1.0.2",
+    "installerVersion": "Versión del instalador: 1.0.2",
     "readChangelog": "Leer el registro de cambios.",
     "checkForUpdates": "Buscar actualizaciones",
     "autoUpdates": "Actualizaciones automáticas",

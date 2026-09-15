@@ -63,8 +63,8 @@
   },
   "about": {
     "title": "About",
-    "version": "Version 1.0.0",
-    "installerVersion": "Installer version: 1.0.0",
+    "version": "Version 1.0.2",
+    "installerVersion": "Installer version: 1.0.2",
     "readChangelog": "Read the changelog.",
     "checkForUpdates": "Check for updates",
     "autoUpdates": "Automatic updates",
