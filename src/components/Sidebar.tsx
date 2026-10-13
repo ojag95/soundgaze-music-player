@@ -135,14 +135,12 @@ export default function Sidebar({ isMobileOpen, closeMobile }: SidebarProps) {
               closeMobile();
             }}
             className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all bg-background/50 hover:bg-surface-hover text-muted hover:text-content border border-divider/60 shadow-xs group"
-            title={t("commandPalette.searchTitle", "Buscar (Ctrl+K o /)")}
+            title="Buscar (Ctrl+K o /)"
           >
-            <Search size={20} className="shrink-0 text-muted group-hover:text-brand-primary transition-colors pr-1.5" />
+            <Search size={20} className="shrink-0 text-muted group-hover:text-brand-primary transition-colors pr-2" />
             {showText && (
               <div className="flex items-center justify-between flex-1 min-w-0">
-                <span className="truncate text-xs sm:text-sm">
-                  {t("commandPalette.searchButton", "Buscar...")}
-                </span>
+                <span className="truncate text-xs sm:text-sm">Buscar...</span>
                 <kbd className="text-[10px] bg-surface px-1.5 py-0.5 rounded border border-divider font-mono text-muted/80">
                   Ctrl+K
                 </kbd>
