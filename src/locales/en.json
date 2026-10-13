@@ -39,7 +39,8 @@
     "allYears": "All years",
     "closeModal": "Close modal",
     "play": "Play",
-    "next": "Next"
+    "next": "Next",
+    "track": "Track"
   },
   "search": {
     "placeholderLibrary": "Search in library...",
@@ -254,14 +255,24 @@
     "themeDesc": "Adapts text colors based on the cover's brightness.",
     "graphView": {
       "title": "Graphical View",
-      "instructions": "Click a node to expand it or drag to explore.",
+      "instructions": "Click to expand • Right-click to play or queue • Drag to explore",
       "exploringArtist": "Exploring Artist",
       "exploringAlbum": "Exploring Album",
       "settingsTooltip": "Plugin settings",
       "graphicalViewTitle": "Interactive Graphical View",
       "graphicalViewDesc": "Explore your library as an interactive network of nodes with real-time physics.",
       "showAlbumCoversTitle": "Show Album Covers on Nodes",
-      "showAlbumCoversDesc": "Draws the album image directly on the circular node. Turning this off improves performance for very large libraries."
+      "showAlbumCoversDesc": "Draws the album image directly on the circular node. Turning this off improves performance for very large libraries.",
+      "playArtist": "Play artist",
+      "playAlbum": "Play album",
+      "playTrack": "Play track",
+      "enqueueArtist": "Add artist to queue",
+      "enqueueAlbum": "Add album to queue",
+      "enqueueTrack": "Add to queue",
+      "expandNode": "Expand in graph",
+      "artistEnqueued": "{{count}} tracks from {{artist}} added to queue",
+      "albumEnqueued": "{{count}} tracks from \"{{album}}\" added to queue",
+      "trackEnqueued": "\"{{title}}\" added to queue"
     },
     "lyrics": {
       "lyricsTitle": "Full Screen Lyrics",

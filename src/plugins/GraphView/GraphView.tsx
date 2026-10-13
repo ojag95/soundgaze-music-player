@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Network } from "vis-network/standalone";
 import { GraphNode, useGraphStore } from "../../store/graphStore";
-import { usePlayerStore } from "../../store/playerStore";
+import { usePlayerStore, TrackData } from "../../store/playerStore";
 import { useLibrarySettingsStore } from "../../store/librarySettingsStore";
-import { Network as NetworkIcon } from "lucide-react";
+import { Network as NetworkIcon, Play, ListPlus, Maximize2, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 const getThemeColors = () => {
@@ -22,15 +23,24 @@ const getThemeColors = () => {
   };
 };
 
+interface ContextMenuState {
+  x: number;
+  y: number;
+  node: GraphNode;
+}
+
 const GraphView: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const networkRef = useRef<Network | null>(null);
   const hoverTooltipRef = useRef<HTMLDivElement>(null);
+  const contextMenuRef = useRef<HTMLDivElement>(null);
 
   const { t } = useTranslation();
 
   const { nodes, edges, initializeGraph, expandNode } = useGraphStore();
   const playSpecific = usePlayerStore((s) => s.playSpecific);
+  const playTracks = usePlayerStore((s) => s.playTracks);
+  const enqueueTracks = usePlayerStore((s) => s.enqueueTracks);
   const libraryTree = usePlayerStore((s) => s.libraryTree);
   const selectedArtist = usePlayerStore((s) => s.selectedArtist);
   const selectedAlbum = usePlayerStore((s) => s.selectedAlbum);
@@ -43,6 +53,19 @@ const GraphView: React.FC = () => {
     name: string;
   } | null>(null);
   const hoveredAlbumIdRef = useRef<string | null>(null);
+
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = (message: string) => {
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    setToastMessage(message);
+    toastTimeoutRef.current = setTimeout(() => {
+      setToastMessage(null);
+    }, 2500);
+  };
 
   const getGraphOptions = () => {
     const colors = getThemeColors();
@@ -133,19 +156,49 @@ const GraphView: React.FC = () => {
   };
 
   useEffect(() => {
+    if (!contextMenu) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target as Node)) {
+        setContextMenu(null);
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setContextMenu(null);
+      }
+    };
+
+    window.addEventListener("pointerdown", handleClickOutside);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("pointerdown", handleClickOutside);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [contextMenu]);
+
+  useEffect(() => {
     initializeGraph();
 
-    if (containerRef.current) {
+    const containerEl = containerRef.current;
+    const handleNativeContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+    };
+    containerEl?.addEventListener("contextmenu", handleNativeContextMenu);
+
+    if (containerEl) {
       const data = { nodes, edges };
       networkRef.current = new Network(
-        containerRef.current,
+        containerEl,
         data,
         getGraphOptions(),
       );
 
-      containerRef.current.style.cursor = "grab";
+      containerEl.style.cursor = "grab";
 
       networkRef.current.on("click", (params) => {
+        setContextMenu(null);
         if (params.nodes.length > 0) {
           const nodeId = params.nodes[0] as string;
           const clickedNode = nodes.get(nodeId) as unknown as GraphNode;
@@ -187,6 +240,39 @@ const GraphView: React.FC = () => {
         }
       });
 
+      networkRef.current.on("oncontext", (params) => {
+        params.event.preventDefault();
+        params.event.stopPropagation();
+
+        const nodeId = networkRef.current?.getNodeAt(params.pointer.DOM) as string | undefined;
+        if (!nodeId) {
+          setContextMenu(null);
+          return;
+        }
+
+        const node = nodes.get(nodeId) as unknown as GraphNode | null;
+        if (!node || node.group === "root") {
+          setContextMenu(null);
+          return;
+        }
+
+        networkRef.current?.selectNodes([nodeId]);
+
+        hoveredAlbumIdRef.current = null;
+        setHoveredAlbum(null);
+
+        const menuWidth = 240;
+        const menuHeight = 180;
+        const x = Math.min(params.event.clientX, window.innerWidth - menuWidth - 16);
+        const y = Math.min(params.event.clientY, window.innerHeight - menuHeight - 16);
+
+        setContextMenu({
+          x: Math.max(16, x),
+          y: Math.max(16, y),
+          node,
+        });
+      });
+
       networkRef.current.on("hoverNode", (params) => {
         if (containerRef.current) containerRef.current.style.cursor = "default";
 
@@ -212,8 +298,13 @@ const GraphView: React.FC = () => {
       networkRef.current.on("dragStart", () => {
         if (containerRef.current)
           containerRef.current.style.cursor = "grabbing";
+        setContextMenu(null);
         hoveredAlbumIdRef.current = null;
         setHoveredAlbum(null);
+      });
+
+      networkRef.current.on("zoom", () => {
+        setContextMenu(null);
       });
 
       networkRef.current.on("dragEnd", () => {
@@ -257,6 +348,7 @@ const GraphView: React.FC = () => {
 
     return () => {
       observer.disconnect();
+      containerEl?.removeEventListener("contextmenu", handleNativeContextMenu);
       if (networkRef.current) {
         networkRef.current.destroy();
         networkRef.current = null;
@@ -264,7 +356,7 @@ const GraphView: React.FC = () => {
     };
   }, []);
 
-  const extractAlbumTracks = (targetPath: string) => {
+  const extractAlbumTracks = (targetPath: string): TrackData[] => {
     for (const artist in libraryTree) {
       for (const album in libraryTree[artist]) {
         const tracks = libraryTree[artist][album];
@@ -274,6 +366,105 @@ const GraphView: React.FC = () => {
       }
     }
     return [];
+  };
+
+  const getArtistTracks = (artistName: string): TrackData[] => {
+    const albums = libraryTree[artistName];
+    if (albums) {
+      return Object.values(albums).flat();
+    }
+    const entry = Object.entries(libraryTree).find(
+      ([k]) => k.toLowerCase() === artistName.toLowerCase()
+    );
+    if (entry) {
+      return Object.values(entry[1]).flat();
+    }
+    return [];
+  };
+
+  const getAlbumTracks = (node: GraphNode): TrackData[] => {
+    if (node.artist && node.album && libraryTree[node.artist]?.[node.album]) {
+      return libraryTree[node.artist][node.album];
+    }
+    if (node.coverPath) {
+      const tracks = extractAlbumTracks(node.coverPath);
+      if (tracks.length > 0) return tracks;
+    }
+    const albumName = node.album || node.label;
+    for (const artist in libraryTree) {
+      if (libraryTree[artist][albumName]) {
+        return libraryTree[artist][albumName];
+      }
+    }
+    return [];
+  };
+
+  const getTrackData = (node: GraphNode): TrackData[] => {
+    if (node.trackPath) {
+      const albumTracks = extractAlbumTracks(node.trackPath);
+      const track = albumTracks.find((t) => t.path === node.trackPath);
+      if (track) return [track];
+    }
+    return [];
+  };
+
+  const handlePlayContextMenu = (node: GraphNode) => {
+    setContextMenu(null);
+    if (node.group === "artist") {
+      const tracks = getArtistTracks(node.artist || node.label);
+      if (tracks.length > 0) playTracks(tracks);
+    } else if (node.group === "album") {
+      const tracks = getAlbumTracks(node);
+      if (tracks.length > 0) playTracks(tracks);
+    } else if (node.group === "track" && node.trackPath) {
+      const albumTracks = extractAlbumTracks(node.trackPath);
+      playSpecific(node.trackPath, albumTracks);
+    }
+  };
+
+  const handleEnqueueContextMenu = (node: GraphNode) => {
+    setContextMenu(null);
+    if (node.group === "artist") {
+      const artist = node.artist || node.label;
+      const tracks = getArtistTracks(artist);
+      if (tracks.length > 0) {
+        enqueueTracks(tracks);
+        showToast(
+          t("plugins.graphView.artistEnqueued", "{{count}} canciones de {{artist}} añadidas a la cola", {
+            count: tracks.length,
+            artist,
+          })
+        );
+      }
+    } else if (node.group === "album") {
+      const album = node.album || node.label;
+      const tracks = getAlbumTracks(node);
+      if (tracks.length > 0) {
+        enqueueTracks(tracks);
+        showToast(
+          t("plugins.graphView.albumEnqueued", "{{count}} canciones de \"{{album}}\" añadidas a la cola", {
+            count: tracks.length,
+            album,
+          })
+        );
+      }
+    } else if (node.group === "track") {
+      const tracks = getTrackData(node);
+      if (tracks.length > 0) {
+        enqueueTracks(tracks);
+        showToast(
+          t("plugins.graphView.trackEnqueued", "\"{{title}}\" añadida a la cola", {
+            title: node.label,
+          })
+        );
+      }
+    }
+  };
+
+  const handleExpandContextMenu = (node: GraphNode) => {
+    setContextMenu(null);
+    const position = networkRef.current?.getPositions([node.id])[node.id];
+    expandNode(node.id, position?.x, position?.y);
   };
 
   return (
@@ -333,6 +524,93 @@ const GraphView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {contextMenu &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            ref={contextMenuRef}
+            style={{
+              top: `${contextMenu.y}px`,
+              left: `${contextMenu.x}px`,
+            }}
+            className="fixed z-[250] min-w-[210px] max-w-[260px] bg-surface/95 backdrop-blur-md border border-divider shadow-2xl rounded-xl p-1.5 flex flex-col gap-0.5 text-content animate-in fade-in zoom-in-95 duration-150 select-none"
+            onClick={(e) => e.stopPropagation()}
+            onContextMenu={(e) => e.preventDefault()}
+          >
+            <div className="px-2.5 py-1.5 border-b border-divider/50 flex flex-col mb-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-brand-primary">
+                {contextMenu.node.group === "artist"
+                  ? t("common.artist", "Artista")
+                  : contextMenu.node.group === "album"
+                    ? t("common.album", "Álbum")
+                    : t("common.track", "Canción")}
+              </span>
+              <span className="text-xs md:text-sm font-semibold text-content truncate mt-0.5" title={contextMenu.node.label}>
+                {contextMenu.node.label}
+              </span>
+              {contextMenu.node.group === "album" && contextMenu.node.artist && (
+                <span className="text-[11px] text-muted truncate">
+                  {contextMenu.node.artist}
+                </span>
+              )}
+            </div>
+
+            <button
+              onClick={() => handlePlayContextMenu(contextMenu.node)}
+              className="flex items-center gap-2.5 px-2.5 py-2 text-xs md:text-sm font-medium rounded-lg hover:bg-brand-primary hover:text-white transition-colors group cursor-pointer text-left w-full"
+            >
+              <Play size={14} fill="currentColor" className="shrink-0 text-brand-primary group-hover:text-white transition-colors" />
+              <span className="truncate">
+                {contextMenu.node.group === "artist"
+                  ? t("plugins.graphView.playArtist", "Reproducir artista")
+                  : contextMenu.node.group === "album"
+                    ? t("plugins.graphView.playAlbum", "Reproducir álbum")
+                    : t("plugins.graphView.playTrack", "Reproducir canción")}
+              </span>
+            </button>
+
+            <button
+              onClick={() => handleEnqueueContextMenu(contextMenu.node)}
+              className="flex items-center gap-2.5 px-2.5 py-2 text-xs md:text-sm font-medium rounded-lg hover:bg-surface-hover text-content transition-colors group cursor-pointer text-left w-full"
+            >
+              <ListPlus size={15} className="shrink-0 text-muted group-hover:text-brand-primary transition-colors" />
+              <span className="truncate">
+                {contextMenu.node.group === "artist"
+                  ? t("plugins.graphView.enqueueArtist", "Añadir artista a la cola")
+                  : contextMenu.node.group === "album"
+                    ? t("plugins.graphView.enqueueAlbum", "Añadir álbum a la cola")
+                    : t("plugins.graphView.enqueueTrack", "Añadir a la cola")}
+              </span>
+            </button>
+
+            {contextMenu.node.group !== "track" &&
+              !useGraphStore.getState().expandedNodes.has(contextMenu.node.id) && (
+                <button
+                  onClick={() => handleExpandContextMenu(contextMenu.node)}
+                  className="flex items-center gap-2.5 px-2.5 py-2 text-xs md:text-sm font-medium rounded-lg hover:bg-surface-hover text-muted hover:text-content transition-colors border-t border-divider/40 mt-0.5 pt-1.5 cursor-pointer text-left w-full"
+                >
+                  <Maximize2 size={14} className="shrink-0" />
+                  <span className="truncate">{t("plugins.graphView.expandNode", "Expandir en el gráfico")}</span>
+                </button>
+              )}
+          </div>,
+          document.body
+        )}
+
+      {toastMessage &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div className="fixed bottom-32 left-1/2 -translate-x-1/2 z-[300] pointer-events-none flex items-center justify-center">
+            <div className="pointer-events-auto flex items-center gap-2.5 px-5 py-2.5 bg-surface/95 backdrop-blur-md border border-divider shadow-2xl rounded-full text-xs md:text-sm font-medium text-content animate-in fade-in slide-in-from-bottom-5 duration-200">
+              <div className="p-1 rounded-full bg-brand-primary/20 text-brand-primary shrink-0">
+                <Check size={14} />
+              </div>
+              <span className="truncate max-w-xs md:max-w-md">{toastMessage}</span>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 };

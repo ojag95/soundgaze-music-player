@@ -16,6 +16,8 @@ export interface GraphNode {
   image?: string;
   x?: number;
   y?: number;
+  artist?: string;
+  album?: string;
 }
 
 export interface GraphEdge {
@@ -68,19 +70,29 @@ export const useGraphStore = create<GraphState>((_set, get) => ({
         size: showCovers ? 30 : 18,
         shape: showCovers ? 'circularImage' : 'dot',
         image: showCovers ? buildCoverUrl(coverPath) : undefined,
-        coverPath
+        coverPath,
+        artist: selectedArtist,
+        album: selectedAlbum,
       });
 
       tracks.forEach(track => {
         const trackId = `track-${track.path}`;
-        newNodes.push({ id: trackId, label: track.title, group: 'track', size: 6, trackPath: track.path });
+        newNodes.push({
+          id: trackId,
+          label: track.title,
+          group: 'track',
+          size: 6,
+          trackPath: track.path,
+          artist: selectedArtist,
+          album: selectedAlbum,
+        });
         newEdges.push({ id: `edge-${rootId}-${trackId}`, from: rootId, to: trackId });
       });
       get().expandedNodes.add(rootId);
 
     } else if (selectedArtist && !selectedAlbum) {
       const rootId = `artist-${selectedArtist}`;
-      newNodes.push({ id: rootId, label: selectedArtist, group: 'artist', size: 18 });
+      newNodes.push({ id: rootId, label: selectedArtist, group: 'artist', size: 18, artist: selectedArtist });
 
       const albums = Object.keys(libraryTree[selectedArtist] || {});
       albums.forEach(album => {
@@ -95,7 +107,9 @@ export const useGraphStore = create<GraphState>((_set, get) => ({
           size: showCovers ? 20 : 8,
           shape: showCovers ? 'circularImage' : 'dot',
           image: showCovers ? buildCoverUrl(coverPath) : undefined,
-          coverPath
+          coverPath,
+          artist: selectedArtist,
+          album,
         });
         newEdges.push({ id: `edge-${rootId}-${albumId}`, from: rootId, to: albumId });
       });
@@ -112,7 +126,7 @@ export const useGraphStore = create<GraphState>((_set, get) => ({
       const artists = Object.keys(libraryTree);
       artists.forEach(artist => {
         const artistId = `artist-${artist}`;
-        newNodes.push({ id: artistId, label: artist, group: 'artist', size: 12 });
+        newNodes.push({ id: artistId, label: artist, group: 'artist', size: 12, artist });
         newEdges.push({ id: `edge-root-${artistId}`, from: 'root', to: artistId });
       });
       get().expandedNodes.add('root');
@@ -153,15 +167,18 @@ export const useGraphStore = create<GraphState>((_set, get) => ({
           image: showCovers ? buildCoverUrl(coverPath) : undefined,
           x: offsetX,
           y: offsetY,
-          coverPath
+          coverPath,
+          artist: artistName,
+          album,
         });
         newEdges.push({ id: `edge-${nodeId}-${albumId}`, from: nodeId, to: albumId });
       });
 
     } else if (nodeId.startsWith('album-')) {
+      const existingNode = nodes.get(nodeId) as unknown as GraphNode | undefined;
       const parts = nodeId.split('-');
-      const artistName = parts[1];
-      const albumName = parts.slice(2).join('-');
+      const artistName = existingNode?.artist || parts[1];
+      const albumName = existingNode?.album || parts.slice(2).join('-');
 
       const tracks = libraryTree[artistName]?.[albumName] || [];
 
@@ -177,7 +194,9 @@ export const useGraphStore = create<GraphState>((_set, get) => ({
           size: 6,
           trackPath: track.path,
           x: offsetX,
-          y: offsetY
+          y: offsetY,
+          artist: artistName,
+          album: albumName,
         });
         newEdges.push({ id: `edge-${nodeId}-${trackId}`, from: nodeId, to: trackId });
       });

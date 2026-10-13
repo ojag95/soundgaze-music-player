@@ -39,7 +39,8 @@
     "allYears": "Todos los años",
     "closeModal": "Cerrar modal",
     "play": "Reproducir",
-    "next": "Siguiente"
+    "next": "Siguiente",
+    "track": "Canción"
   },
   "search": {
     "placeholderLibrary": "Buscar en la biblioteca...",
@@ -254,14 +255,24 @@
     "themeDesc": "Adapta los colores del texto según la luminosidad de la portada.",
     "graphView": {
       "title": "Vista Gráfica",
-      "instructions": "Haz clic en un nodo para expandirlo o arrastra para explorar",
+      "instructions": "Clic para expandir • Clic derecho para reproducir o encolar • Arrastra para explorar",
       "exploringArtist": "Explorando Artista",
       "exploringAlbum": "Explorando Álbum",
       "settingsTooltip": "Ajustes del plugin",
       "graphicalViewTitle": "Vista Gráfica Interactiva",
       "graphicalViewDesc": "Explora tu biblioteca como una red interactiva de nodos con físicas en tiempo real.",
       "showAlbumCoversTitle": "Mostrar Portadas en los Nodos",
-      "showAlbumCoversDesc": "Dibuja la imagen del álbum directamente en el nodo circular. Apagar esto mejora el rendimiento en bibliotecas muy grandes."
+      "showAlbumCoversDesc": "Dibuja la imagen del álbum directamente en el nodo circular. Apagar esto mejora el rendimiento en bibliotecas muy grandes.",
+      "playArtist": "Reproducir artista",
+      "playAlbum": "Reproducir álbum",
+      "playTrack": "Reproducir canción",
+      "enqueueArtist": "Añadir artista a la cola",
+      "enqueueAlbum": "Añadir álbum a la cola",
+      "enqueueTrack": "Añadir a la cola",
+      "expandNode": "Expandir en el gráfico",
+      "artistEnqueued": "{{count}} canciones de {{artist}} añadidas a la cola",
+      "albumEnqueued": "{{count}} canciones de \"{{album}}\" añadidas a la cola",
+      "trackEnqueued": "\"{{title}}\" añadida a la cola"
     },
     "lyrics": {
       "lyricsTitle": "Letras en Pantalla Completa",
