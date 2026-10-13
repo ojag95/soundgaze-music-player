@@ -9,6 +9,7 @@ import {
   Computer,
   HardDrive,
   Puzzle,
+  Keyboard,
 } from "lucide-react";
 import { useUIStore } from "../store/uiStore";
 import Appearance from "./Settings/Appearance";
@@ -20,6 +21,7 @@ import { useTranslation } from "react-i18next";
 import About from "./Settings/About";
 import PluginsSettings from "./Settings/Plugins";
 import StorageSettings from "./Settings/StorageSettings";
+import ShortcutsSettings from "./Settings/ShortcutsSettings";
 
 export default function SettingsModal() {
   const { isSettingsOpen, closeSettings } = useUIStore();
@@ -43,6 +45,7 @@ export default function SettingsModal() {
     { id: "library", icon: <Library size={18} /> },
     { id: "player", icon: <MonitorPlay size={18} /> },
     { id: "connection", icon: <Server size={18} /> },
+    { id: "shortcuts", icon: <Keyboard size={18} /> },
     { id: "system", icon: <Computer size={18} /> },
     { id: "storage", icon: <HardDrive size={18} /> },
     { id: "plugins", icon: <Puzzle size={18} /> }, 
@@ -95,6 +98,8 @@ export default function SettingsModal() {
             {activeTab === "library" && <LibraryData />}
             
             {activeTab === "connection" && <Daemon />}
+
+            {activeTab === "shortcuts" && <ShortcutsSettings />}
             
             {activeTab === "system" && <SystemSettings />}
 

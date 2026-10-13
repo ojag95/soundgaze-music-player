@@ -115,6 +115,7 @@ pub fn run() {
             mpd_toggle_play,
             mpd_play_file,
             mpd_play_context,
+            mpd_append_context,
             mpd_get_queue,
             mpd_move_track,
             mpd_next,

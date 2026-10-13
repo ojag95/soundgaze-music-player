@@ -11,6 +11,7 @@ import {
   Heart,
   Waypoints,
   Timeline,
+  Search,
 } from "lucide-react";
 import { useState } from "react";
 import { useUIStore } from "../store/uiStore";
@@ -23,7 +24,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ isMobileOpen, closeMobile }: SidebarProps) {
-  const { openSettings } = useUIStore();
+  const { openSettings, openCommandPalette } = useUIStore();
   const { t } = useTranslation();
 
   const playlists = usePlayerStore((s) => s.playlists);
@@ -124,6 +125,29 @@ export default function Sidebar({ isMobileOpen, closeMobile }: SidebarProps) {
             onClick={closeMobile}
           >
             <X size={24} />
+          </button>
+        </div>
+
+        <div className="px-1">
+          <button
+            onClick={() => {
+              openCommandPalette();
+              closeMobile();
+            }}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all bg-background/50 hover:bg-surface-hover text-muted hover:text-content border border-divider/60 shadow-xs group"
+            title={t("commandPalette.searchTitle", "Buscar (Ctrl+K o /)")}
+          >
+            <Search size={20} className="shrink-0 text-muted group-hover:text-brand-primary transition-colors pr-1.5" />
+            {showText && (
+              <div className="flex items-center justify-between flex-1 min-w-0">
+                <span className="truncate text-xs sm:text-sm">
+                  {t("commandPalette.searchButton", "Buscar...")}
+                </span>
+                <kbd className="text-[10px] bg-surface px-1.5 py-0.5 rounded border border-divider font-mono text-muted/80">
+                  Ctrl+K
+                </kbd>
+              </div>
+            )}
           </button>
         </div>
 

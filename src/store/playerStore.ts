@@ -47,6 +47,8 @@ interface PlayerState {
   fetchState: () => Promise<void>;
   togglePlay: () => Promise<void>;
   playSpecific: (path: string, tracksContext?: TrackData[]) => Promise<void>;
+  playTracks: (tracks: TrackData[]) => Promise<void>;
+  enqueueTracks: (tracks: TrackData[]) => Promise<void>;
   playNext: () => Promise<void>;
   playPrev: () => Promise<void>;
   queue: TrackData[];
@@ -357,6 +359,33 @@ export const usePlayerStore = create<PlayerState>()(
           get().fetchQueue();
         } catch (error) {
           console.error("Error al reproducir contexto:", error);
+        }
+      },
+
+      playTracks: async (tracks) => {
+        if (!tracks.length) return;
+        try {
+          let list = [...tracks];
+          if (get().isShuffle) {
+            list = shuffleArray(list);
+          }
+          const pathsToPlay = list.map((t) => t.path);
+          await invoke("mpd_play_context", { paths: pathsToPlay });
+          get().fetchQueue();
+          get().fetchState();
+        } catch (error) {
+          console.error("Error al reproducir pistas:", error);
+        }
+      },
+
+      enqueueTracks: async (tracks) => {
+        if (!tracks.length) return;
+        try {
+          const pathsToPlay = tracks.map((t) => t.path);
+          await invoke("mpd_append_context", { paths: pathsToPlay });
+          get().fetchQueue();
+        } catch (error) {
+          console.error("Error al encolar pistas:", error);
         }
       },
 

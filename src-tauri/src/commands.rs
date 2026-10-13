@@ -196,6 +196,24 @@ pub fn mpd_play_context(paths: Vec<String>, state: State<'_, MpdConfig>) -> Resu
 }
 
 #[tauri::command]
+pub fn mpd_append_context(paths: Vec<String>, state: State<'_, MpdConfig>) -> Result<String, String> {
+    let mut conn = connect_to_mpd(&state)?;
+    if paths.is_empty() {
+        return Ok("No hay canciones".to_string());
+    }
+
+    for path in paths {
+        let song = Song {
+            file: path,
+            ..Default::default()
+        };
+        let _ = conn.push(song);
+    }
+
+    Ok("Canciones añadidas a la cola".to_string())
+}
+
+#[tauri::command]
 pub fn mpd_get_queue(state: State<'_, MpdConfig>) -> Result<Vec<TrackData>, String> {
     let mut conn = connect_to_mpd(&state)?;
     let queue_songs = conn.queue().map_err(|e| e.to_string())?;

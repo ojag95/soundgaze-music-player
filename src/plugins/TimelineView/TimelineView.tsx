@@ -1,7 +1,8 @@
 import React, { useMemo, useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { usePlayerStore, TrackData } from "../../store/playerStore";
 import { useLibrarySettingsStore } from "../../store/librarySettingsStore";
-import { Play, Timeline, Disc3, X, } from "lucide-react";
+import { Play, Timeline, Disc3, X, ListPlus, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 interface TimelineAlbum {
@@ -70,12 +71,17 @@ const TimelineView: React.FC = () => {
   const currentTrack = usePlayerStore((s) => s.currentTrack);
   
   const playSpecific = usePlayerStore((s) => s.playSpecific);
+  const playTracks = usePlayerStore((s) => s.playTracks);
+  const enqueueTracks = usePlayerStore((s) => s.enqueueTracks);
   
   const basePath = useLibrarySettingsStore((s) => s.basePath);
   const coverCacheBuster = useLibrarySettingsStore((s) => s.coverCacheBuster);
 
   const [selectedAlbum, setSelectedAlbum] = useState<TimelineAlbum | null>(null);
   const [selectedYearFilter, setSelectedYearFilter] = useState<number | "all">("all");
+
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const sliderRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
@@ -94,6 +100,14 @@ const TimelineView: React.FC = () => {
   useEffect(() => {
     setSelectedYearFilter("all");
   }, [selectedArtist]);
+
+  const showToast = (message: string) => {
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    setToastMessage(message);
+    toastTimeoutRef.current = setTimeout(() => {
+      setToastMessage(null);
+    }, 2500);
+  };
 
   const groupedAlbums = useMemo(() => {
     const albumsArray: TimelineAlbum[] = [];
@@ -144,6 +158,33 @@ const TimelineView: React.FC = () => {
     return groupedAlbums.filter(([year]) => year === selectedYearFilter);
   }, [groupedAlbums, selectedYearFilter]);
 
+  const getTracksForYear = (year: number): TrackData[] => {
+    const yearGroup = groupedAlbums.find(([y]) => y === year);
+    if (!yearGroup) return [];
+    return yearGroup[1].flatMap((album) => album.tracks);
+  };
+
+  const handlePlayYear = (year: number) => {
+    const tracks = getTracksForYear(year);
+    if (tracks.length > 0) {
+      playTracks(tracks);
+    }
+  };
+
+  const handleEnqueueYear = (year: number) => {
+    const tracks = getTracksForYear(year);
+    if (tracks.length > 0) {
+      enqueueTracks(tracks);
+      const yearLabel = year === 0 ? t("common.unknown", "Desconocido") : year.toString();
+      showToast(
+        t("plugins.timelineView.yearEnqueued", "{{count}} canciones de {{year}} añadidas a la cola", {
+          count: tracks.length,
+          year: yearLabel,
+        })
+      );
+    }
+  };
+
   const getCoverUrl = (path: string) => {
     return `cover://localhost/?path=${encodeURIComponent(path)}&base=${encodeURIComponent(basePath)}&t=${coverCacheBuster}`;
   };
@@ -176,8 +217,8 @@ const TimelineView: React.FC = () => {
   return (
     <div className="relative w-full h-full bg-background flex flex-col animate-in fade-in duration-500 overflow-hidden">
       
-      <div className="shrink-0 p-6 md:p-8 flex items-center gap-4 bg-background z-10">
-        <div className="w-12 h-12 rounded-xl bg-surface/80 backdrop-blur-md flex items-center justify-center border border-divider shadow-lg">
+      <div className="shrink-0 p-6 md:p-8 flex items-center gap-4 bg-background z-10 flex-wrap">
+        <div className="w-12 h-12 rounded-xl bg-surface/80 backdrop-blur-md flex items-center justify-center border border-divider shadow-lg shrink-0">
           <Timeline size={24} className="text-brand-primary" />
         </div>
         <div>
@@ -193,31 +234,55 @@ const TimelineView: React.FC = () => {
           </p>
         </div>
 
-        {availableYears.length > 1 && (
-          <div className="ml-auto relative">
-            <select
-              value={selectedYearFilter}
-              onChange={(e) => {
-                const val = e.target.value;
-                setSelectedYearFilter(val === "all" ? "all" : Number(val));
-                if (sliderRef.current) sliderRef.current.scrollLeft = 0;
-              }}
-              className="appearance-none bg-surface border border-divider text-content text-sm rounded-xl px-4 py-2 pr-8 shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-primary cursor-pointer transition-colors hover:border-brand-primary/50"
-            >
-              <option value="all">{t("common.allYears", "Todos los años")}</option>
-              {availableYears.map((year) => (
-                <option key={year} value={year}>
-                  {year === 0 ? t("common.unknown", "Desconocido") : year}
-                </option>
-              ))}
-            </select>
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
-              </svg>
+        <div className="ml-auto flex items-center gap-3">
+          {selectedYearFilter !== "all" && (
+            <div className="flex items-center gap-2 animate-in fade-in zoom-in-95 duration-200">
+              <button
+                onClick={() => handlePlayYear(Number(selectedYearFilter))}
+                className="flex items-center gap-2 px-3.5 py-2 bg-brand-primary text-white text-xs md:text-sm font-bold rounded-xl shadow-md hover:scale-105 active:scale-95 transition-all"
+                title={t("plugins.timelineView.playYearTitle", "Reproducir todos los álbumes de este año")}
+              >
+                <Play size={15} fill="currentColor" />
+                <span>{t("plugins.timelineView.playYear", "Reproducir año")}</span>
+              </button>
+
+              <button
+                onClick={() => handleEnqueueYear(Number(selectedYearFilter))}
+                className="flex items-center gap-1.5 px-3 py-2 bg-surface border border-divider text-content text-xs md:text-sm font-semibold rounded-xl shadow-sm hover:bg-surface-hover hover:border-brand-primary/50 active:scale-95 transition-all"
+                title={t("plugins.timelineView.enqueueYearTitle", "Añadir todos los álbumes de este año a la cola")}
+              >
+                <ListPlus size={16} className="text-brand-primary" />
+                <span className="hidden sm:inline">{t("plugins.timelineView.enqueueYear", "Añadir a la cola")}</span>
+              </button>
             </div>
-          </div>
-        )}
+          )}
+
+          {availableYears.length > 1 && (
+            <div className="relative">
+              <select
+                value={selectedYearFilter}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSelectedYearFilter(val === "all" ? "all" : Number(val));
+                  if (sliderRef.current) sliderRef.current.scrollLeft = 0;
+                }}
+                className="appearance-none bg-surface border border-divider text-content text-sm rounded-xl px-4 py-2 pr-8 shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-primary cursor-pointer transition-colors hover:border-brand-primary/50"
+              >
+                <option value="all">{t("common.allYears", "Todos los años")}</option>
+                {availableYears.map((year) => (
+                  <option key={year} value={year}>
+                    {year === 0 ? t("common.unknown", "Desconocido") : year}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       <div 
@@ -228,14 +293,48 @@ const TimelineView: React.FC = () => {
         onMouseMove={handleMouseMove}
         className="flex-1 flex items-center justify-start overflow-x-auto custom-scrollbar px-8 snap-x snap-mandatory pb-8 cursor-grab active:cursor-grabbing"
       >
-        <div className="flex gap-4 min-w-max items-center h-80">
+        <div className="flex gap-6 min-w-max items-center h-80">
           {displayedAlbums.map(([year, albums]) => (
             <div key={year} className="flex gap-4 pr-16 items-center">
               
-              <div className="snap-start flex flex-col items-center justify-center min-w-[80px] border-r border-divider/30 pr-4 pointer-events-none">
-                <span className="font-black text-brand-primary/20 -rotate-90 origin-center whitespace-nowrap text-4xl select-none">
-                  {year === 0 ? t("common.unknown", "Desconocido") : year}
-                </span>
+              <div className="snap-start flex flex-col items-center justify-between min-w-[96px] md:min-w-[110px] h-48 md:h-56 border-r border-divider/40 pr-5 select-none group/year">
+                <div className="flex-1 flex items-center justify-center">
+                  <span className="font-black text-brand-primary/25 group-hover/year:text-brand-primary/60 transition-colors -rotate-90 origin-center whitespace-nowrap text-3xl md:text-4xl">
+                    {year === 0 ? t("common.unknown", "Desconocido") : year}
+                  </span>
+                </div>
+
+                <div className="flex flex-col items-center gap-1.5 pt-2">
+                  <span className="text-[11px] font-semibold text-muted tracking-wider">
+                    {albums.length} {albums.length === 1 ? t("common.album", "Álbum") : t("common.albums", "Álbumes")}
+                  </span>
+
+                  <div className="flex items-center gap-1.5 bg-surface/90 border border-divider rounded-full p-1 shadow-md">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (hasDragged.current) return;
+                        handlePlayYear(year);
+                      }}
+                      className="w-7 h-7 rounded-full bg-brand-primary text-white flex items-center justify-center hover:scale-110 active:scale-95 transition-all shadow-xs"
+                      title={`${t("plugins.timelineView.playYear", "Reproducir año")} ${year === 0 ? "" : year}`}
+                    >
+                      <Play size={12} fill="currentColor" className="ml-0.5" />
+                    </button>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (hasDragged.current) return;
+                        handleEnqueueYear(year);
+                      }}
+                      className="w-7 h-7 rounded-full bg-surface-hover hover:bg-background text-muted hover:text-brand-primary flex items-center justify-center hover:scale-110 active:scale-95 transition-all"
+                      title={`${t("plugins.timelineView.enqueueYear", "Añadir a la cola")} ${year === 0 ? "" : year}`}
+                    >
+                      <ListPlus size={13} />
+                    </button>
+                  </div>
+                </div>
               </div>
               
               <div className="flex gap-6 items-center">
@@ -328,10 +427,26 @@ const TimelineView: React.FC = () => {
               <div className="flex items-center gap-3 w-full">
                 <button
                   onClick={() => playSpecific(selectedAlbum.tracks[0].path, selectedAlbum.tracks)}
-                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-brand-primary text-white rounded-xl font-bold hover:scale-105 transition-transform shadow-lg shadow-brand-primary/20"
+                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-brand-primary text-white rounded-xl font-bold hover:scale-105 active:scale-95 transition-all shadow-lg shadow-brand-primary/20"
                 >
                   <Play size={20} fill="currentColor" />
                   {t("common.play", "Reproducir")}
+                </button>
+
+                <button
+                  onClick={() => {
+                    enqueueTracks(selectedAlbum.tracks);
+                    showToast(
+                      t("plugins.timelineView.albumEnqueued", "{{count}} canciones de \"{{album}}\" añadidas a la cola", {
+                        count: selectedAlbum.tracks.length,
+                        album: selectedAlbum.album,
+                      })
+                    );
+                  }}
+                  className="p-3 bg-surface border border-divider hover:bg-surface-hover text-muted hover:text-brand-primary rounded-xl font-bold transition-all shadow-md active:scale-95"
+                  title={t("plugins.timelineView.enqueueYearTitle", "Añadir a la cola")}
+                >
+                  <ListPlus size={20} />
                 </button>
               </div>
             </div>
@@ -394,6 +509,20 @@ const TimelineView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {toastMessage &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div className="fixed bottom-32 left-1/2 -translate-x-1/2 z-[300] pointer-events-none flex items-center justify-center">
+            <div className="pointer-events-auto flex items-center gap-2.5 px-5 py-2.5 bg-surface/95 backdrop-blur-md border border-divider shadow-2xl rounded-full text-xs md:text-sm font-medium text-content animate-in fade-in slide-in-from-bottom-5 duration-200">
+              <div className="p-1 rounded-full bg-brand-primary/20 text-brand-primary shrink-0">
+                <Check size={14} />
+              </div>
+              <span className="truncate max-w-xs md:max-w-md">{toastMessage}</span>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 };

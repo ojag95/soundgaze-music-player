@@ -18,6 +18,7 @@ import { listen } from "@tauri-apps/api/event";
 import QueueDrawer from "./QueueDrawer";
 import { useUIStore } from "../store/uiStore";
 import { usePluginStore } from "../store/pluginStore";
+import { useTranslation } from "react-i18next";
 
 const formatTime = (secs: number) => {
   if (isNaN(secs)) return "0:00";
@@ -128,12 +129,12 @@ export default function PlayerBar() {
 
   const { basePath, coverCacheBuster } = useLibrarySettingsStore();
   const { isPluginActive } = usePluginStore();
-  const { openLargeArt } = useUIStore();
+  const { openLargeArt, isQueueOpen, setIsQueueOpen, toggleQueue } = useUIStore();
+  const { t } = useTranslation();
 
   const isVisible = usePageVisibility();
 
   const [imgError, setImgError] = useState(false);
-  const [isQueueOpen, setIsQueueOpen] = useState(false);
 
   const [isDraggingVol, setIsDraggingVol] = useState(false);
   const [localVolume, setLocalVolume] = useState(volume);
@@ -266,7 +267,8 @@ export default function PlayerBar() {
            
           <button
             className="text-muted hover:text-content transition-colors"
-            onClick={() => setIsQueueOpen(true)}
+            onClick={toggleQueue}
+            title={t("commandPalette.queueTitle", "Cola de reproducción (Ctrl+Q)")}
           >
             <ListMusic size={20} />
           </button>
