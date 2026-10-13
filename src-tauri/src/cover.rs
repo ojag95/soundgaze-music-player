@@ -1,6 +1,7 @@
 use crate::mpd_client::get_music_dir;
 use lofty::prelude::*;
 use lofty::probe::Probe;
+use std::collections::{HashMap, VecDeque};
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -9,8 +10,75 @@ use tauri::http::{Request, Response};
 
 static LAST_COVER_CACHE: Mutex<Option<(String, Option<String>)>> = Mutex::new(None);
 
+struct LruCoverCache {
+    capacity: usize,
+    entries: HashMap<PathBuf, Option<(String, Vec<u8>)>>,
+    order: VecDeque<PathBuf>,
+}
+
+impl LruCoverCache {
+    fn new(capacity: usize) -> Self {
+        Self {
+            capacity,
+            entries: HashMap::with_capacity(capacity),
+            order: VecDeque::with_capacity(capacity),
+        }
+    }
+
+    fn get(&mut self, key: &PathBuf) -> Option<Option<(String, Vec<u8>)>> {
+        if self.entries.contains_key(key) {
+            if let Some(pos) = self.order.iter().position(|k| k == key) {
+                let k = self.order.remove(pos).unwrap();
+                self.order.push_back(k);
+            }
+            self.entries.get(key).cloned()
+        } else {
+            None
+        }
+    }
+
+    fn insert(&mut self, key: PathBuf, value: Option<(String, Vec<u8>)>) {
+        if self.entries.contains_key(&key) {
+            if let Some(pos) = self.order.iter().position(|k| k == &key) {
+                self.order.remove(pos);
+            }
+        } else if self.entries.len() >= self.capacity {
+            if let Some(oldest) = self.order.pop_front() {
+                self.entries.remove(&oldest);
+            }
+        }
+        self.order.push_back(key.clone());
+        self.entries.insert(key, value);
+    }
+}
+
+static COVER_CACHE: Mutex<Option<LruCoverCache>> = Mutex::new(None);
+
+fn get_cached_cover(key: &PathBuf) -> Option<Option<(String, Vec<u8>)>> {
+    if let Ok(mut lock) = COVER_CACHE.lock() {
+        if lock.is_none() {
+            *lock = Some(LruCoverCache::new(200));
+        }
+        if let Some(cache) = lock.as_mut() {
+            return cache.get(key);
+        }
+    }
+    None
+}
+
+fn put_cached_cover(key: PathBuf, value: Option<(String, Vec<u8>)>) {
+    if let Ok(mut lock) = COVER_CACHE.lock() {
+        if lock.is_none() {
+            *lock = Some(LruCoverCache::new(200));
+        }
+        if let Some(cache) = lock.as_mut() {
+            cache.insert(key, value);
+        }
+    }
+}
+
 pub fn save_temp_cover(relative_path: &str) -> Option<String> {
-    // Si la pista actual no ha cambiado, devolvemos la URI en caché para evitar lecturas/escrituras continuas a disco
+
     if let Ok(cache) = LAST_COVER_CACHE.lock() {
         if let Some((cached_path, cached_uri)) = &*cache {
             if cached_path == relative_path {
@@ -42,7 +110,6 @@ pub fn save_temp_cover(relative_path: &str) -> Option<String> {
             }
         }
 
-        // 2. Fallback: buscar archivos de carátula comunes en la misma carpeta (cover.jpg, folder.jpg, etc.)
         if let Some(parent_dir) = full_path.parent() {
             let common_covers = [
                 "cover.jpg",
@@ -108,12 +175,31 @@ pub fn handle_cover_request(request: &Request<Vec<u8>>) -> Response<Vec<u8>> {
         }
     };
 
-    // Sanitización contra path traversal: evitar rutas absolutas que sobrescriban base_path
     let clean_path = decoded_path.trim_start_matches('/');
     let full_path = base_path.join(clean_path);
 
+    if let Some(cached_result) = get_cached_cover(&full_path) {
+        match cached_result {
+            Some((mime, bytes)) => {
+                return Response::builder()
+                    .header("Content-Type", mime)
+                    .header("Cache-Control", "public, max-age=31536000")
+                    .header("Access-Control-Allow-Origin", "*")
+                    .status(200)
+                    .body(bytes)
+                    .unwrap();
+            }
+            None => {
+                return Response::builder()
+                    .status(404)
+                    .header("Access-Control-Allow-Origin", "*")
+                    .body(Vec::new())
+                    .unwrap();
+            }
+        }
+    }
+
     if full_path.exists() {
-        // 1. Intentar extraer imagen embebida con Lofty
         if let Ok(tagged_file) = Probe::open(&full_path).and_then(|p| p.read()) {
             if let Some(tag) = tagged_file.primary_tag().or_else(|| tagged_file.first_tag()) {
                 if let Some(pic) = tag.pictures().first() {
@@ -121,19 +207,22 @@ pub fn handle_cover_request(request: &Request<Vec<u8>>) -> Response<Vec<u8>> {
                         .mime_type()
                         .map(|m| m.to_string())
                         .unwrap_or_else(|| "image/jpeg".to_string());
+                    let bytes = pic.data().to_vec();
+
+                    put_cached_cover(full_path, Some((mime.clone(), bytes.clone())));
 
                     return Response::builder()
                         .header("Content-Type", mime)
                         .header("Cache-Control", "public, max-age=31536000")
                         .header("Access-Control-Allow-Origin", "*")
                         .status(200)
-                        .body(pic.data().to_vec())
+                        .body(bytes)
                         .unwrap();
                 }
             }
         }
 
-        // 2. Fallback: buscar archivos de carátula comunes en la misma carpeta (cover.jpg, folder.jpg, etc.)
+        // 3. Fallback: buscar archivos de carátula comunes en la misma carpeta (cover.jpg, folder.jpg, etc.)
         if let Some(parent_dir) = full_path.parent() {
             let common_covers = [
                 "cover.jpg",
@@ -148,10 +237,13 @@ pub fn handle_cover_request(request: &Request<Vec<u8>>) -> Response<Vec<u8>> {
                 if candidate.is_file() {
                     if let Ok(bytes) = fs::read(&candidate) {
                         let mime = if cover_name.ends_with(".png") {
-                            "image/png"
+                            "image/png".to_string()
                         } else {
-                            "image/jpeg"
+                            "image/jpeg".to_string()
                         };
+
+                        put_cached_cover(full_path, Some((mime.clone(), bytes.clone())));
+
                         return Response::builder()
                             .header("Content-Type", mime)
                             .header("Cache-Control", "public, max-age=31536000")
@@ -164,6 +256,8 @@ pub fn handle_cover_request(request: &Request<Vec<u8>>) -> Response<Vec<u8>> {
             }
         }
     }
+
+    put_cached_cover(full_path, None);
 
     Response::builder()
         .status(404)

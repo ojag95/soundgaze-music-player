@@ -34,12 +34,26 @@ const libraryTree = usePlayerStore((s) => s.libraryTree);
   const addToPlaylist = usePlayerStore((s) => s.addToPlaylist);
   const { t } = useTranslation();
 
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(() => {
+    return Object.keys(usePlayerStore.getState().libraryTree).length === 0;
+  });
   const [isScrolled, setIsScrolled] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  useEffect(() => {
+    if (!searchQuery) {
+      setDebouncedQuery("");
+      return;
+    }
+    const timer = setTimeout(() => {
+      setDebouncedQuery(searchQuery);
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const parentRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -52,6 +66,12 @@ const libraryTree = usePlayerStore((s) => s.libraryTree);
 
   useEffect(() => {
     restoreLibraryView();
+
+    if (Object.keys(usePlayerStore.getState().libraryTree).length > 0) {
+      setIsLoading(false);
+      return;
+    }
+
     const loadLibrary = async () => {
       try {
         setIsLoading(true);
@@ -63,7 +83,25 @@ const libraryTree = usePlayerStore((s) => s.libraryTree);
         setIsLoading(false);
       }
     };
-    loadLibrary();
+
+    const unsub = usePlayerStore.persist?.onFinishHydration?.(() => {
+      if (Object.keys(usePlayerStore.getState().libraryTree).length > 0) {
+        restoreLibraryView();
+        setIsLoading(false);
+      } else {
+        loadLibrary();
+      }
+    });
+
+    if (usePlayerStore.persist?.hasHydrated?.()) {
+      if (Object.keys(usePlayerStore.getState().libraryTree).length === 0) {
+        loadLibrary();
+      }
+    }
+
+    return () => {
+      if (unsub) unsub();
+    };
   }, []);
 
   const albumsOfSelectedArtist = selectedArtist
@@ -89,16 +127,16 @@ const libraryTree = usePlayerStore((s) => s.libraryTree);
   };
 
   const filteredTracks = useMemo(() => {
-    if (!searchQuery.trim()) return currentViewTracks;
+    if (!debouncedQuery.trim()) return currentViewTracks;
 
-    const lowerQuery = searchQuery.toLowerCase();
+    const lowerQuery = debouncedQuery.toLowerCase();
     return currentViewTracks.filter(
       (track) =>
         track.title?.toLowerCase().includes(lowerQuery) ||
         track.artist?.toLowerCase().includes(lowerQuery) ||
         track.album?.toLowerCase().includes(lowerQuery),
     );
-  }, [currentViewTracks, searchQuery]);
+  }, [currentViewTracks, debouncedQuery]);
 
   const rowVirtualizer = useVirtualizer({
     count: filteredTracks.length,

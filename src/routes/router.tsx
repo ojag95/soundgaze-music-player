@@ -1,10 +1,12 @@
+import React from "react";
 import { createMemoryRouter } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
 import Library from "../pages/Library";
-import GenreDetail from "../pages/GenreDetail";
-import Playlists from "../pages/Playlist";
-import GraphView from "../plugins/GraphView/GraphView";
-import TimelineView from "../plugins/TimelineView/TimelineView";
+
+const GraphView = React.lazy(() => import("../plugins/GraphView/GraphView"));
+const TimelineView = React.lazy(() => import("../plugins/TimelineView/TimelineView"));
+const GenreDetail = React.lazy(() => import("../pages/GenreDetail"));
+const Playlists = React.lazy(() => import("../pages/Playlist"));
 
 export const router = createMemoryRouter([
   {

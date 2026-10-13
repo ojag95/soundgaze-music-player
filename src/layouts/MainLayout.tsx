@@ -11,9 +11,10 @@ import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import OnboardingModal from '../components/Settings/OnboardingModal';
 import { useTranslation } from 'react-i18next';
 
+const LargeArtOverlay = React.lazy(() => import("../plugins/LargeArt/LargeArtOverlay"));
+
 export default function MainLayout() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const LargeArtOverlay = React.lazy(() => import("../plugins/LargeArt/LargeArtOverlay"));
   const { isLargeArtOpen, openCommandPalette } = useUIStore();
   const { isPluginActive } = usePluginStore();
   const { t } = useTranslation();
@@ -59,7 +60,9 @@ export default function MainLayout() {
         />
         
         <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-32">
-          <Outlet />
+          <Suspense fallback={null}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
 
