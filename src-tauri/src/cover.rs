@@ -27,7 +27,12 @@ pub fn save_temp_cover(relative_path: &str) -> Option<String> {
         if let Ok(tagged_file) = Probe::open(&full_path).and_then(|p| p.read()) {
             if let Some(tag) = tagged_file.primary_tag().or_else(|| tagged_file.first_tag()) {
                 if let Some(pic) = tag.pictures().first() {
-                    let temp_file_path = std::env::temp_dir().join("soundgaze_cover_current.jpg");
+                    let ext = if pic.mime_type().map(|m| m.to_string()).as_deref() == Some("image/png") {
+                        "png"
+                    } else {
+                        "jpg"
+                    };
+                    let temp_file_path = std::env::temp_dir().join(format!("soundgaze_cover_current.{}", ext));
                     if let Ok(mut file) = fs::File::create(&temp_file_path) {
                         if file.write_all(pic.data()).is_ok() {
                             return Some(format!("file://{}", temp_file_path.display()));
@@ -36,6 +41,28 @@ pub fn save_temp_cover(relative_path: &str) -> Option<String> {
                 }
             }
         }
+
+        // 2. Fallback: buscar archivos de carátula comunes en la misma carpeta (cover.jpg, folder.jpg, etc.)
+        if let Some(parent_dir) = full_path.parent() {
+            let common_covers = [
+                "cover.jpg",
+                "cover.png",
+                "cover.jpeg",
+                "folder.jpg",
+                "folder.png",
+                "folder.jpeg",
+                "front.jpg",
+                "front.png",
+                "front.jpeg",
+            ];
+            for cover_name in common_covers {
+                let candidate = parent_dir.join(cover_name);
+                if candidate.is_file() {
+                    return Some(format!("file://{}", candidate.display()));
+                }
+            }
+        }
+
         None
     })();
 
