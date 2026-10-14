@@ -4,7 +4,7 @@ import { Network } from "vis-network/standalone";
 import { GraphNode, useGraphStore } from "../../store/graphStore";
 import { usePlayerStore, TrackData } from "../../store/playerStore";
 import { useLibrarySettingsStore } from "../../store/librarySettingsStore";
-import { Network as NetworkIcon, Play, ListPlus, Maximize2, Check } from "lucide-react";
+import { Network as NetworkIcon, Play, ListPlus, Maximize2, Check, X, Sparkles, Square } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 const getThemeColors = () => {
@@ -37,13 +37,23 @@ const GraphView: React.FC = () => {
 
   const { t } = useTranslation();
 
-  const { nodes, edges, initializeGraph, expandNode } = useGraphStore();
+  const {
+    nodes,
+    edges,
+    initializeGraph,
+    expandNode,
+    isTimelapseRunning,
+    playTimelapse,
+    stopTimelapse,
+  } = useGraphStore();
   const playSpecific = usePlayerStore((s) => s.playSpecific);
   const playTracks = usePlayerStore((s) => s.playTracks);
   const enqueueTracks = usePlayerStore((s) => s.enqueueTracks);
   const libraryTree = usePlayerStore((s) => s.libraryTree);
   const selectedArtist = usePlayerStore((s) => s.selectedArtist);
   const selectedAlbum = usePlayerStore((s) => s.selectedAlbum);
+  const selectArtist = usePlayerStore((s) => s.selectArtist);
+  const selectAlbum = usePlayerStore((s) => s.selectAlbum);
 
   const { basePath, coverCacheBuster } = useLibrarySettingsStore();
 
@@ -65,6 +75,18 @@ const GraphView: React.FC = () => {
     toastTimeoutRef.current = setTimeout(() => {
       setToastMessage(null);
     }, 2500);
+  };
+
+  const handleClearFilter = () => {
+    stopTimelapse();
+    selectArtist(null);
+    selectAlbum(null);
+    initializeGraph();
+    if (networkRef.current) {
+      networkRef.current.fit({
+        animation: { duration: 1500, easingFunction: "easeInOutQuad" },
+      });
+    }
   };
 
   const getGraphOptions = () => {
@@ -135,12 +157,12 @@ const GraphView: React.FC = () => {
           gravitationalConstant: -60,
           centralGravity: 0.005,
           springLength: 120,
-          springConstant: 0.05,
-          damping: 0.5,
-          avoidOverlap: 0.3,
+          springConstant: 0.035,
+          damping: 0.65,
+          avoidOverlap: 0.35,
         },
-        maxVelocity: 30,
-        minVelocity: 0.5,
+        maxVelocity: 20,
+        minVelocity: 0.3,
         stabilization: { enabled: true, iterations: 50 },
       },
       interaction: {
@@ -349,6 +371,7 @@ const GraphView: React.FC = () => {
     return () => {
       observer.disconnect();
       containerEl?.removeEventListener("contextmenu", handleNativeContextMenu);
+      stopTimelapse();
       if (networkRef.current) {
         networkRef.current.destroy();
         networkRef.current = null;
@@ -475,13 +498,25 @@ const GraphView: React.FC = () => {
             <NetworkIcon size={24} className="text-brand-primary" />
           </div>
           <div>
-            <h1 className="text-3xl font-extrabold text-content tracking-tight drop-shadow-md">
-              {selectedAlbum
-                ? selectedAlbum
-                : selectedArtist
-                  ? selectedArtist
-                  : t("plugins.graphView.title")}
-            </h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-extrabold text-content tracking-tight drop-shadow-md">
+                {selectedAlbum
+                  ? selectedAlbum
+                  : selectedArtist
+                    ? selectedArtist
+                    : t("plugins.graphView.title")}
+              </h1>
+              {(selectedArtist || selectedAlbum) && (
+                <button
+                  onClick={handleClearFilter}
+                  className="pointer-events-auto flex items-center gap-1.5 px-3 py-1 bg-surface/90 backdrop-blur-md border border-divider text-muted hover:text-content hover:border-brand-primary/60 rounded-full text-xs font-semibold shadow-md hover:shadow-lg active:scale-95 transition-all group cursor-pointer"
+                  title={t("plugins.graphView.clearFilterTooltip", "Quitar filtro y ver toda la biblioteca en el gráfico")}
+                >
+                  <X size={13} className="text-muted group-hover:text-brand-primary transition-colors" />
+                  <span>{t("common.viewAllLibrary", "Ver toda la biblioteca")}</span>
+                </button>
+              )}
+            </div>
             <p className="text-xs font-semibold text-muted uppercase tracking-widest mt-1 drop-shadow-md">
               {selectedAlbum
                 ? t("plugins.graphView.exploringAlbum", "Explorando Álbum")
@@ -492,8 +527,42 @@ const GraphView: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-surface/50 backdrop-blur-md px-4 py-2 rounded-full border border-divider/50 text-muted/80 text-xs font-medium shadow-sm pointer-events-auto">
-          {t("plugins.graphView.instructions")}
+        <div className="flex items-center gap-2 pointer-events-auto">
+          <button
+            onClick={() => {
+              if (isTimelapseRunning) {
+                stopTimelapse();
+              } else {
+                playTimelapse(networkRef.current);
+              }
+            }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold backdrop-blur-md border transition-all shadow-sm active:scale-95 cursor-pointer ${
+              isTimelapseRunning
+                ? "bg-brand-primary text-white border-brand-primary shadow-brand-primary/20 animate-pulse"
+                : "bg-surface/70 hover:bg-surface border-divider text-muted hover:text-content hover:border-brand-primary/50"
+            }`}
+            title={
+              isTimelapseRunning
+                ? t("plugins.graphView.stopTimelapse", "Detener animación")
+                : t("plugins.graphView.timelapseTooltip", "Animar la expansión secuencial de la red")
+            }
+          >
+            {isTimelapseRunning ? (
+              <>
+                <Square size={12} fill="currentColor" />
+                <span>{t("plugins.graphView.stopTimelapse", "Detener")}</span>
+              </>
+            ) : (
+              <>
+                <Sparkles size={13} className="text-brand-primary" />
+                <span>{t("plugins.graphView.timelapse", "Time-lapse")}</span>
+              </>
+            )}
+          </button>
+
+          <div className="bg-surface/50 backdrop-blur-md px-4 py-2 rounded-full border border-divider/50 text-muted/80 text-xs font-medium shadow-sm">
+            {t("plugins.graphView.instructions")}
+          </div>
         </div>
       </div>
 

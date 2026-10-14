@@ -174,23 +174,40 @@ const libraryTree = usePlayerStore((s) => s.libraryTree);
   };
 
   return (
-    <div className="relative flex h-[calc(100vh-60px)] animate-in fade-in duration-300">
-      <button
-        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        className={`absolute top-2 z-50 flex items-center justify-center w-6 h-6 rounded-full bg-surface border border-divider text-muted hover:text-brand-primary shadow-sm hover:scale-110 transition-all duration-300 ${
-          isSidebarOpen ? "left-[244px]" : "left-2"
+    <div className="relative flex h-[calc(100vh-60px)] animate-in fade-in duration-300  p-4 md:p-6 pb-32">
+      <div
+        className={`absolute top-2 z-50 transition-all duration-300 group/panel-toggle ${
+          isSidebarOpen ? "left-[270px]" : "left-2"
         }`}
-        title={
-          isSidebarOpen ? "Ocultar barra lateral" : "Mostrar barra lateral"
-        }
       >
-        <ChevronRight
-          size={14}
-          className={`transition-transform duration-300 ${
-            isSidebarOpen ? "rotate-180" : ""
-          }`}
-        />
-      </button>
+        <button
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          className="flex items-center justify-center w-6 h-6 rounded-full bg-surface border border-divider text-muted hover:text-brand-primary shadow-sm hover:scale-110 transition-all duration-300 cursor-pointer"
+          title={
+            isSidebarOpen
+              ? t("common.collapseSidebarPanel", "Ocultar panel lateral")
+              : t("common.expandSidebarPanel", "Mostrar panel lateral")
+          }
+          aria-label={
+            isSidebarOpen
+              ? t("common.collapseSidebarPanel", "Ocultar panel lateral")
+              : t("common.expandSidebarPanel", "Mostrar panel lateral")
+          }
+        >
+          <ChevronRight
+            size={14}
+            className={`transition-transform duration-300 ${
+              isSidebarOpen ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+
+        <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 px-2 py-1 bg-surface/95 backdrop-blur-md border border-divider text-content text-[11px] font-medium rounded-md shadow-lg opacity-0 pointer-events-none group-hover/panel-toggle:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
+          {isSidebarOpen
+            ? t("common.collapseSidebarPanel", "Ocultar panel lateral")
+            : t("common.expandSidebarPanel", "Mostrar panel lateral")}
+        </div>
+      </div>
 
       {isMobile && isSidebarOpen && (
         <div

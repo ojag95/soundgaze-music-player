@@ -68,6 +68,8 @@ const TimelineView: React.FC = () => {
 
   const libraryTree = usePlayerStore((s) => s.libraryTree);
   const selectedArtist = usePlayerStore((s) => s.selectedArtist);
+  const selectArtist = usePlayerStore((s) => s.selectArtist);
+  const selectAlbum = usePlayerStore((s) => s.selectAlbum);
   const currentTrack = usePlayerStore((s) => s.currentTrack);
   
   const playSpecific = usePlayerStore((s) => s.playSpecific);
@@ -215,18 +217,33 @@ const TimelineView: React.FC = () => {
   };
 
   return (
-    <div className="relative w-full h-full bg-background flex flex-col animate-in fade-in duration-500 overflow-hidden">
+    <div className="relative w-full h-full bg-background flex flex-col animate-in fade-in duration-500 overflow-hidden p-4 md:p-6 pb-32">
       
       <div className="shrink-0 p-6 md:p-8 flex items-center gap-4 bg-background z-10 flex-wrap">
         <div className="w-12 h-12 rounded-xl bg-surface/80 backdrop-blur-md flex items-center justify-center border border-divider shadow-lg shrink-0">
           <Timeline size={24} className="text-brand-primary" />
         </div>
         <div>
-          <h1 className="text-2xl md:text-3xl font-extrabold text-content tracking-tight drop-shadow-md">
-            {selectedArtist
-              ? selectedArtist
-              : t("plugins.timelineView.title", "Línea de Tiempo Musical")}
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl md:text-3xl font-extrabold text-content tracking-tight drop-shadow-md">
+              {selectedArtist
+                ? selectedArtist
+                : t("plugins.timelineView.title", "Línea de Tiempo Musical")}
+            </h1>
+            {selectedArtist && (
+              <button
+                onClick={() => {
+                  selectArtist(null);
+                  selectAlbum(null);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1 bg-surface border border-divider text-muted hover:text-content hover:border-brand-primary/60 rounded-full text-xs font-semibold shadow-xs hover:shadow-sm active:scale-95 transition-all group cursor-pointer"
+                title={t("plugins.timelineView.clearFilterTooltip", "Quitar filtro de artista y ver todos los álbumes")}
+              >
+                <X size={13} className="text-muted group-hover:text-brand-primary transition-colors" />
+                <span>{t("common.viewAllLibrary", "Ver toda la biblioteca")}</span>
+              </button>
+            )}
+          </div>
           <p className="text-xs font-semibold text-muted uppercase tracking-widest mt-1 drop-shadow-md">
             {selectedArtist
               ? t("plugins.timelineView.artistTimeline", "Cronología del artista")

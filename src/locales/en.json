@@ -40,7 +40,10 @@
     "closeModal": "Close modal",
     "play": "Play",
     "next": "Next",
-    "track": "Track"
+    "track": "Track",
+    "viewAllLibrary": "View all library",
+    "collapseSidebarPanel": "Hide side panel",
+    "expandSidebarPanel": "Show side panel"
   },
   "search": {
     "placeholderLibrary": "Search in library...",
@@ -272,7 +275,11 @@
       "expandNode": "Expand in graph",
       "artistEnqueued": "{{count}} tracks from {{artist}} added to queue",
       "albumEnqueued": "{{count}} tracks from \"{{album}}\" added to queue",
-      "trackEnqueued": "\"{{title}}\" added to queue"
+      "trackEnqueued": "\"{{title}}\" added to queue",
+      "clearFilterTooltip": "Clear filter and view full graph",
+      "timelapse": "Time-lapse",
+      "stopTimelapse": "Stop",
+      "timelapseTooltip": "Animate the sequential expansion of the graph"
     },
     "lyrics": {
       "lyricsTitle": "Full Screen Lyrics",
@@ -289,7 +296,8 @@
       "enqueueYear": "Add to queue",
       "enqueueYearTitle": "Add all albums from this year to queue",
       "yearEnqueued": "{{count}} tracks from {{year}} added to queue",
-      "albumEnqueued": "{{count}} tracks from {{album}} added to queue"
+      "albumEnqueued": "{{count}} tracks from {{album}} added to queue",
+      "clearFilterTooltip": "Clear artist filter and view all albums"
     }
   }
 }

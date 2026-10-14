@@ -40,7 +40,10 @@
     "closeModal": "Cerrar modal",
     "play": "Reproducir",
     "next": "Siguiente",
-    "track": "Canción"
+    "track": "Canción",
+    "viewAllLibrary": "Ver toda la biblioteca",
+    "collapseSidebarPanel": "Ocultar panel lateral",
+    "expandSidebarPanel": "Mostrar panel lateral"
   },
   "search": {
     "placeholderLibrary": "Buscar en la biblioteca...",
@@ -272,7 +275,11 @@
       "expandNode": "Expandir en el gráfico",
       "artistEnqueued": "{{count}} canciones de {{artist}} añadidas a la cola",
       "albumEnqueued": "{{count}} canciones de \"{{album}}\" añadidas a la cola",
-      "trackEnqueued": "\"{{title}}\" añadida a la cola"
+      "trackEnqueued": "\"{{title}}\" añadida a la cola",
+      "clearFilterTooltip": "Quitar filtro y ver toda la biblioteca en el gráfico",
+      "timelapse": "Time-lapse",
+      "stopTimelapse": "Detener",
+      "timelapseTooltip": "Animar la expansión secuencial de la red"
     },
     "lyrics": {
       "lyricsTitle": "Letras en Pantalla Completa",
@@ -289,7 +296,8 @@
       "enqueueYear": "Añadir a la cola",
       "enqueueYearTitle": "Añadir todos los álbumes de este año a la cola",
       "yearEnqueued": "{{count}} canciones de {{year}} añadidas a la cola",
-      "albumEnqueued": "{{count}} canciones de {{album}} añadidas a la cola"
+      "albumEnqueued": "{{count}} canciones de {{album}} añadidas a la cola",
+      "clearFilterTooltip": "Quitar filtro de artista y ver todos los álbumes"
     }
   }
 }

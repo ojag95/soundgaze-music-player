@@ -59,7 +59,7 @@ export default function MainLayout() {
           closeMobile={() => setIsMobileMenuOpen(false)} 
         />
         
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-32">
+        <main className="flex-1 overflow-y-auto">
           <Suspense fallback={null}>
             <Outlet />
           </Suspense>
