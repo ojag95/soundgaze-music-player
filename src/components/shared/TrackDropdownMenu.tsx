@@ -1,5 +1,8 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
+import { usePluginStore } from "../../store/pluginStore";
+import { useUIStore } from "../../store/uiStore";
+import { FileEdit } from "lucide-react";
 
 interface TrackDropdownMenuProps {
   trackPath: string;
@@ -23,6 +26,8 @@ const TrackDropdownMenu: React.FC<TrackDropdownMenuProps> = ({
   showDetailsOption = false,
 }) => {
   const { t } = useTranslation();
+  const isTagEditorActive = usePluginStore((s) => s.isPluginActive("tag-editor"));
+  const openTagEditor = useUIStore((s) => s.openTagEditor);
 
   return (
     <>
@@ -34,7 +39,7 @@ const TrackDropdownMenu: React.FC<TrackDropdownMenuProps> = ({
         }}
       />
       <div
-        className="absolute right-0 top-6 mt-1 w-48 bg-surface border border-divider rounded-xl shadow-2xl z-40 py-2 animate-in fade-in zoom-in-95 duration-150"
+        className="absolute right-0 top-6 mt-1 w-52 bg-surface border border-divider rounded-xl shadow-2xl z-40 py-2 animate-in fade-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         {onRemoveFromPlaylist && currentPlaylist && !isFavoritesView && (
@@ -78,7 +83,23 @@ const TrackDropdownMenu: React.FC<TrackDropdownMenuProps> = ({
           )}
         </div>
 
-        {showDetailsOption && (
+        {isTagEditorActive && (
+          <>
+            <div className="border-t border-divider my-1"></div>
+            <button
+              onClick={() => {
+                onClose();
+                openTagEditor(trackPath);
+              }}
+              className="w-full text-left px-4 py-2 text-sm text-content hover:bg-background hover:text-brand-primary flex items-center gap-2.5 transition-colors cursor-pointer"
+            >
+              <FileEdit size={14} className="text-muted" />
+              <span>{t("plugins.tagEditor.menuAction", "Editar etiquetas")}</span>
+            </button>
+          </>
+        )}
+
+        {showDetailsOption && !isTagEditorActive && (
           <>
             <div className="border-t border-divider my-1"></div>
             <button

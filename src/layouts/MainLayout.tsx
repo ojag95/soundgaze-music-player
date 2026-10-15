@@ -12,10 +12,11 @@ import OnboardingModal from '../components/Settings/OnboardingModal';
 import { useTranslation } from 'react-i18next';
 
 const LargeArtOverlay = React.lazy(() => import("../plugins/LargeArt/LargeArtOverlay"));
+const TagEditorModal = React.lazy(() => import("../plugins/TagEditor/TagEditorModal"));
 
 export default function MainLayout() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { isLargeArtOpen, openCommandPalette } = useUIStore();
+  const { isLargeArtOpen, openCommandPalette, tagEditorTrackPath, closeTagEditor } = useUIStore();
   const { isPluginActive } = usePluginStore();
   const { t } = useTranslation();
 
@@ -73,6 +74,14 @@ export default function MainLayout() {
       {isPluginActive("large-art") && isLargeArtOpen && (
         <Suspense fallback={null}>
           <LargeArtOverlay />
+        </Suspense>
+      )}
+      {isPluginActive("tag-editor") && tagEditorTrackPath && (
+        <Suspense fallback={null}>
+          <TagEditorModal
+            trackPath={tagEditorTrackPath}
+            onClose={closeTagEditor}
+          />
         </Suspense>
       )}
     </div>

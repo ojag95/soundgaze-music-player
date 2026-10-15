@@ -99,16 +99,14 @@ const Playlists = () => {
   });
 
   const gridTemplate = isMobile
-    ? `auto minmax(0, 1fr) ${visibleColumns.time ? "auto" : ""}`
-        .replace(/\s+/g, " ")
-        .trim()
+    ? `auto minmax(0, 1fr) auto`
     : `
         auto 
         minmax(0, 2fr) 
         ${visibleColumns.album ? "minmax(0, 1fr)" : ""} 
         ${visibleColumns.genre ? "minmax(0, 1fr)" : ""} 
         ${visibleColumns.date ? "80px" : ""} 
-        ${visibleColumns.time ? "100px" : ""}
+        ${visibleColumns.time ? "120px" : "80px"}
       `
         .replace(/\s+/g, " ")
         .trim();

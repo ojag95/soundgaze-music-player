@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { ChevronRight, Waypoints, Timeline } from "lucide-react";
+import { ChevronRight, Waypoints, Timeline, Tags } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { usePlayerStore, TrackData } from "../store/playerStore";
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -146,16 +146,14 @@ const libraryTree = usePlayerStore((s) => s.libraryTree);
   });
 
   const gridTemplate = isMobile
-    ? `auto minmax(0, 1fr) ${visibleColumns.time ? "auto" : ""}`
-        .replace(/\s+/g, " ")
-        .trim()
+    ? `auto minmax(0, 1fr) auto`
     : `
         auto 
         minmax(0, 2fr) 
         ${visibleColumns.album ? "minmax(0, 1fr)" : ""} 
         ${visibleColumns.genre ? "minmax(0, 1fr)" : ""} 
         ${visibleColumns.date ? "80px" : ""} 
-        ${visibleColumns.time ? "100px" : ""}
+        ${visibleColumns.time ? "120px" : "80px"}
       `
         .replace(/\s+/g, " ")
         .trim();
@@ -369,10 +367,11 @@ const libraryTree = usePlayerStore((s) => s.libraryTree);
               )}
               extraActions={
                 <>
-                  {activePlugins["genre-explorer"] && (
+                  {activePlugins["graph-view"] && (
                     <div
                       className={`group relative flex items-center transition-all duration-300 ease-out overflow-hidden bg-surface border w-10 h-10 rounded-full border-divider cursor-pointer hover:border-brand-primary shadow-sm`}
                       onClick={() => handleGraphicalView()}
+                      title={t("plugins.graphView.title", "Vista Gráfica")}
                     >
                       <Waypoints
                         className="absolute transition-all duration-300 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-muted group-hover:text-brand-primary"
@@ -380,10 +379,23 @@ const libraryTree = usePlayerStore((s) => s.libraryTree);
                       />
                     </div>
                   )}
+                  {activePlugins["genre-explorer"] && (
+                    <div
+                      className={`group relative flex items-center transition-all duration-300 ease-out overflow-hidden bg-surface border w-10 h-10 rounded-full border-divider cursor-pointer hover:border-brand-primary shadow-sm`}
+                      onClick={() => navigate("/genres")}
+                      title={t("plugins.genreExplorer.title", "Explorador de Géneros")}
+                    >
+                      <Tags
+                        className="absolute transition-all duration-300 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-muted group-hover:text-brand-primary"
+                        size={19}
+                      />
+                    </div>
+                  )}
                   {activePlugins["timeline-view"] && !selectedAlbum && (
                     <div
                       className={`group relative flex items-center transition-all duration-300 ease-out overflow-hidden bg-surface border w-10 h-10 rounded-full border-divider cursor-pointer hover:border-brand-primary shadow-sm`}
                       onClick={() => handleTimelineView()}
+                      title={t("plugins.timelineView.title", "Línea de Tiempo")}
                     >
                       <Timeline
                         className="absolute transition-all duration-300 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-muted group-hover:text-brand-primary"

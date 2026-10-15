@@ -22,6 +22,10 @@ interface UIState {
 
   mainViewMode: 'list' | 'graph'; 
   setMainViewMode: (mode: 'list' | 'graph') => void;
+
+  tagEditorTrackPath: string | null;
+  openTagEditor: (trackPath: string) => void;
+  closeTagEditor: () => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -46,4 +50,8 @@ export const useUIStore = create<UIState>((set) => ({
 
   mainViewMode: 'list',
   setMainViewMode: (mode) => set({ mainViewMode: mode }),
+
+  tagEditorTrackPath: null,
+  openTagEditor: (trackPath) => set({ tagEditorTrackPath: trackPath }),
+  closeTagEditor: () => set({ tagEditorTrackPath: null }),
 }));

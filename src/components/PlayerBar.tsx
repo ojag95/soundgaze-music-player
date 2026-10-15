@@ -129,7 +129,7 @@ export default function PlayerBar() {
 
   const { basePath, coverCacheBuster } = useLibrarySettingsStore();
   const { isPluginActive } = usePluginStore();
-  const { openLargeArt, isQueueOpen, setIsQueueOpen, toggleQueue } = useUIStore();
+  const { openLargeArt, isQueueOpen, setIsQueueOpen, toggleQueue, openTagEditor } = useUIStore();
   const { t } = useTranslation();
 
   const isVisible = usePageVisibility();
@@ -192,7 +192,21 @@ export default function PlayerBar() {
         <div
           className={`flex items-center gap-3 w-1/4 ${isPluginActive("large-art") ? "cursor-pointer hover:bg-surface-hover/50 p-1.5 -ml-1.5 rounded-lg transition-colors group" : ""}`}
           onClick={handleInfoClick}
-          title={isPluginActive("large-art") ? "Ver portada en grande" : ""}
+          onContextMenu={(e) => {
+            if (currentTrack && isPluginActive("tag-editor")) {
+              e.preventDefault();
+              openTagEditor(currentTrack.path);
+            }
+          }}
+          title={
+            isPluginActive("large-art")
+              ? isPluginActive("tag-editor")
+                ? "Clic: Pantalla completa • Clic derecho: Editar etiquetas"
+                : "Ver portada en grande"
+              : isPluginActive("tag-editor")
+                ? "Clic derecho: Editar etiquetas"
+                : ""
+          }
         >
           <div className="w-12 h-12 bg-background rounded-md complex-shadow flex items-center justify-center text-muted flex-shrink-0 overflow-hidden group-hover:shadow-md transition-shadow">
             {coverUrl && !imgError ? (

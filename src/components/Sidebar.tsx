@@ -11,6 +11,7 @@ import {
   Heart,
   Waypoints,
   Timeline,
+  Tags,
   Search,
 } from "lucide-react";
 import { useState } from "react";
@@ -36,7 +37,8 @@ export default function Sidebar({ isMobileOpen, closeMobile }: SidebarProps) {
   const selectFavorites = usePlayerStore((s) => s.selectFavorites);
 
   const { isPluginActive } = usePluginStore();
-  const isGraphActive = isPluginActive("genre-explorer");
+  const isGraphActive = isPluginActive("graph-view");
+  const isGenresActive = isPluginActive("genre-explorer");
   const isTimelineActive = isPluginActive("timeline-view");
 
   const navigate = useNavigate();
@@ -56,8 +58,16 @@ export default function Sidebar({ isMobileOpen, closeMobile }: SidebarProps) {
   if (isGraphActive) {
     links.push({
       to: "/graphical-view",
-      label: "Vista Gráfica",
+      label: t("plugins.graphView.title", "Vista Gráfica"),
       icon: <Waypoints size={22} />,
+    });
+  }
+
+  if (isGenresActive) {
+    links.push({
+      to: "/genres",
+      label: t("plugins.genreExplorer.title", "Géneros"),
+      icon: <Tags size={22} />,
     });
   }
 

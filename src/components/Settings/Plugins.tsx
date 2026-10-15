@@ -5,6 +5,8 @@ import {
   Mic2,
   Network,
   Calendar,
+  Tags,
+  FileEdit,
 } from "lucide-react";
 import {
   usePluginStore,
@@ -280,8 +282,8 @@ const PluginsSettings: React.FC = () => {
 
             <div className="flex items-center gap-4 shrink-0">
               <button
-                onClick={() => toggleSettings("genre-explorer")}
-                className={`p-2 rounded-md transition-colors ${expandedPlugin === "genre-explorer" ? "bg-surface-hover text-brand-primary" : "text-muted hover:text-content hover:bg-surface"}`}
+                onClick={() => toggleSettings("graph-view")}
+                className={`p-2 rounded-md transition-colors ${expandedPlugin === "graph-view" ? "bg-surface-hover text-brand-primary" : "text-muted hover:text-content hover:bg-surface"}`}
                 title={t(
                   "plugins.graphView.settingsTooltip",
                   "Ajustes del plugin",
@@ -291,17 +293,17 @@ const PluginsSettings: React.FC = () => {
               </button>
 
               <button
-                onClick={() => togglePlugin("genre-explorer")}
-                className={mainToggleBgClass(activePlugins["genre-explorer"])}
+                onClick={() => togglePlugin("graph-view")}
+                className={mainToggleBgClass(activePlugins["graph-view"])}
               >
                 <span
-                  className={mainToggleKnobClass(activePlugins["genre-explorer"])}
+                  className={mainToggleKnobClass(activePlugins["graph-view"])}
                 />
               </button>
             </div>
           </div>
 
-          {expandedPlugin === "genre-explorer" && (
+          {expandedPlugin === "graph-view" && (
             <div className="mt-6 p-5 bg-surface/50 rounded-lg border border-divider space-y-5 animate-in slide-in-from-top-2 fade-in duration-200">
               <div className="flex items-center justify-between gap-4">
                 <div>
@@ -337,6 +339,41 @@ const PluginsSettings: React.FC = () => {
           <div className="flex items-center justify-between gap-8">
             <div className="flex gap-3">
               <div className="text-muted shrink-0 mt-0.5">
+                <Tags size={20} />
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-content mb-1">
+                  {t(
+                    "plugins.genreExplorer.title",
+                    "Explorador de Géneros Visual",
+                  )}
+                </h3>
+                <p className="text-xs text-muted max-w-md">
+                  {t(
+                    "plugins.genreExplorer.desc",
+                    "Descubre y explora tu biblioteca clasificada por géneros y estilos musicales con vistas y listas dedicadas.",
+                  )}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 shrink-0">
+              <button
+                onClick={() => togglePlugin("genre-explorer")}
+                className={mainToggleBgClass(activePlugins["genre-explorer"])}
+              >
+                <span
+                  className={mainToggleKnobClass(activePlugins["genre-explorer"])}
+                />
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section className="flex flex-col border-b border-divider/50 pb-6 mt-6 last:border-0">
+          <div className="flex items-center justify-between gap-8">
+            <div className="flex gap-3">
+              <div className="text-muted shrink-0 mt-0.5">
                 <Calendar size={20} />
               </div>
               <div>
@@ -359,6 +396,38 @@ const PluginsSettings: React.FC = () => {
               >
                 <span
                   className={mainToggleKnobClass(activePlugins["timeline-view"])}
+                />
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section className="flex flex-col border-b border-divider/50 pb-6 mt-6 last:border-0">
+          <div className="flex items-center justify-between gap-8">
+            <div className="flex gap-3">
+              <div className="text-muted shrink-0 mt-0.5">
+                <FileEdit size={20} />
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-content mb-1">
+                  {t("plugins.tagEditor.title", "Editor de Etiquetas de Audio")}
+                </h3>
+                <p className="text-xs text-muted max-w-md">
+                  {t(
+                    "plugins.tagEditor.desc",
+                    "Permite inspeccionar y editar metadatos (título, artista, álbum, género, año, número de pista y carátula) directamente en los archivos de audio.",
+                  )}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 shrink-0">
+              <button
+                onClick={() => togglePlugin("tag-editor")}
+                className={mainToggleBgClass(activePlugins["tag-editor"])}
+              >
+                <span
+                  className={mainToggleKnobClass(activePlugins["tag-editor"])}
                 />
               </button>
             </div>

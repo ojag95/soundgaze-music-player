@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::sync::Mutex;
 
@@ -96,5 +96,52 @@ pub struct PlayerStatePayload {
     pub elapsed_secs: u64,
     pub total_secs: u64,
     pub current_track: Option<TrackData>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct FullTrackMetadata {
+    pub path: String,
+    pub full_path: String,
+    pub title: String,
+    pub artist: String,
+    pub album_artist: Option<String>,
+    pub album: String,
+    pub genre: Option<String>,
+    pub year: Option<u32>,
+    pub track_number: Option<u32>,
+    pub track_total: Option<u32>,
+    pub disc_number: Option<u32>,
+    pub disc_total: Option<u32>,
+    pub comment: Option<String>,
+    pub lyrics: Option<String>,
+    pub has_cover: bool,
+    pub cover_mime: Option<String>,
+    pub cover_base64: Option<String>,
+    pub format: String,
+    pub duration_secs: u64,
+    pub bitrate_kbps: Option<u32>,
+    pub sample_rate_hz: Option<u32>,
+    pub bit_depth: Option<u8>,
+    pub channels: Option<u8>,
+    pub file_size_bytes: u64,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct UpdateTrackMetadataPayload {
+    pub path: String,
+    pub title: Option<String>,
+    pub artist: Option<String>,
+    pub album_artist: Option<String>,
+    pub album: Option<String>,
+    pub genre: Option<String>,
+    pub year: Option<u32>,
+    pub track_number: Option<u32>,
+    pub track_total: Option<u32>,
+    pub disc_number: Option<u32>,
+    pub disc_total: Option<u32>,
+    pub comment: Option<String>,
+    pub lyrics: Option<String>,
+    pub cover_action: Option<String>, // "keep" | "remove" | "replace"
+    pub new_cover_base64: Option<String>,
 }
 

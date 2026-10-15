@@ -69,7 +69,6 @@ export default function ShortcutsSettings() {
     <div className="space-y-8 animate-in fade-in duration-300">
       <div>
         <h2 className="text-2xl font-bold text-content flex items-center gap-2.5">
-          <Keyboard className="text-brand-primary" size={26} />
           {t("shortcutsSettings.title", "Atajos de teclado")}
         </h2>
         <p className="text-muted text-sm mt-1">
