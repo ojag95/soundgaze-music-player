@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Keyboard, Play, FastForward, Rewind, Volume2, Shuffle, Search, ListMusic, X } from "lucide-react";
+import { Play, FastForward, Rewind, Volume2, Shuffle, Search, ListMusic, X } from "lucide-react";
 
 export default function ShortcutsSettings() {
   const { t } = useTranslation();

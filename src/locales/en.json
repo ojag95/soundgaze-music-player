@@ -63,7 +63,7 @@
     "goToTimeline": "Go to Timeline View",
     "goToTimelineDesc": "Explore albums ordered by year and decade",
     "goToGenres": "Go to Genre Explorer",
-    "goToGenresDesc": "Discover your music categorized by genres and vibes",
+    "goToGenresDesc": "Discover your music categorized by genres",
     "toggleQueue": "Open / Close Playback Queue",
     "openSettings": "Open Settings",
     "toggleTheme": "Toggle Theme (Light / Dark)",
@@ -116,8 +116,8 @@
   },
   "about": {
     "title": "About",
-    "version": "Version 1.0.3",
-    "installerVersion": "Installer version: 1.0.3",
+    "version": "Version 1.0.4",
+    "installerVersion": "Installer version: 1.0.4",
     "readChangelog": "Read the changelog.",
     "checkForUpdates": "Check for updates",
     "autoUpdates": "Automatic updates",
@@ -304,7 +304,7 @@
     "genreExplorer": {
       "title": "Genre Explorer",
       "desc": "Discover and explore your music library categorized by genres and musical styles with dedicated views and playlists.",
-      "subtitle": "Discover your music classified by styles and vibes",
+      "subtitle": "Discover your music classified by styles",
       "searchPlaceholder": "Filter genres...",
       "allGenres": "genres",
       "songsCataloged": "cataloged tracks",

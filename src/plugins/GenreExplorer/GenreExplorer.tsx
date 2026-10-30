@@ -627,7 +627,7 @@ const GenreExplorer: React.FC = () => {
                     {t("plugins.genreExplorer.title", "Explorador de Géneros")}
                   </h1>
                   <p className="text-xs font-semibold text-muted uppercase tracking-widest mt-1">
-                    {t("plugins.genreExplorer.subtitle", "Descubre tu música clasificada por estilos y vibras")}
+                    {t("plugins.genreExplorer.subtitle", "Descubre tu música clasificada por estilos")}
                   </p>
                 </div>
               </div>
