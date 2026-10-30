@@ -36,10 +36,12 @@ const TableHeader: React.FC<TableHeaderProps> = ({
       {!isMobile && visibleColumns.album && <div>{t("common.album", "Álbum")}</div>}
       {!isMobile && visibleColumns.genre && <div>{t("common.genre", "Género")}</div>}
       {!isMobile && visibleColumns.date && <div>{t("common.year", "Año")}</div>}
-      {visibleColumns.time && (
-        <div className="flex justify-end w-12">
+      {visibleColumns.time ? (
+        <div className="flex justify-end pr-7">
           <Clock size={16} />
         </div>
+      ) : (
+        <div></div>
       )}
     </div>
   );

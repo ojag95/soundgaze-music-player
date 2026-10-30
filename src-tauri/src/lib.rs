@@ -5,6 +5,7 @@ pub mod cover;
 pub mod models;
 pub mod mpd_client;
 pub mod mpris;
+pub mod tag_editor;
 pub mod tray;
 
 use commands::*;
@@ -12,6 +13,7 @@ use cover::handle_cover_request;
 use models::{AppSettings, MpdConfig};
 use mpd_client::{connect_to_mpd_raw, get_mpd_state};
 use mpris::{setup_mpris, update_mpris_state};
+use tag_editor::{get_track_metadata, update_track_metadata};
 use tray::setup_tray;
 
 use mpd::{Idle, Subsystem};
@@ -125,7 +127,9 @@ pub fn run() {
             mpd_set_crossfade,
             mpd_set_replay_gain,
             mpd_shuffle,
-            greet
+            greet,
+            get_track_metadata,
+            update_track_metadata
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

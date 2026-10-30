@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { idbStorage } from './idbStorage';
 
-export type PluginID = 'large-art' | 'lyrics' | 'genre-explorer' | 'timeline-view';
+export type PluginID = 'large-art' | 'lyrics' | 'graph-view' | 'genre-explorer' | 'timeline-view' | 'tag-editor';
 
 export interface LargeArtSettings {
   backgroundType: 'cover' | 'solid' | 'gradient';
@@ -32,8 +32,10 @@ export const usePluginStore = create<PluginStore>()(
       activePlugins: {
         'large-art': true,
         'lyrics': false,
+        'graph-view': false,
         'genre-explorer': false,
         'timeline-view': false,
+        'tag-editor': true,
       },
       largeArtSettings: {
         backgroundType: 'cover',
@@ -53,7 +55,19 @@ export const usePluginStore = create<PluginStore>()(
           },
         })),
         
-      isPluginActive: (id) => !!get().activePlugins[id],
+      isPluginActive: (id) => {
+        const plugins = get().activePlugins;
+        if (id === 'tag-editor') {
+          return plugins['tag-editor'] ?? true;
+        }
+        if (id === 'large-art') {
+          return plugins['large-art'] ?? true;
+        }
+        if (id === 'graph-view') {
+          return plugins['graph-view'] ?? false;
+        }
+        return !!plugins[id];
+      },
       
       updateLargeArtSettings: (settings) =>
         set((state) => ({
@@ -73,6 +87,18 @@ export const usePluginStore = create<PluginStore>()(
         largeArtSettings: state.largeArtSettings,
         graphViewSettings: state.graphViewSettings,
       }),
+      onRehydrateStorage: () => (state) => {
+        if (state && state.activePlugins) {
+          if (state.activePlugins['tag-editor'] === undefined) {
+            state.activePlugins['tag-editor'] = true;
+          }
+          // Si el usuario tenía activo el plugin anterior de grafo (que antes usaba la clave genre-explorer), migrar a graph-view
+          if (state.activePlugins['graph-view'] === undefined && (state.activePlugins as any)['genre-explorer'] !== undefined) {
+            state.activePlugins['graph-view'] = (state.activePlugins as any)['genre-explorer'];
+            state.activePlugins['genre-explorer'] = false;
+          }
+        }
+      },
     }
   )
 );

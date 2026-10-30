@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { ChevronRight, Waypoints, Timeline } from "lucide-react";
+import { ChevronRight, Waypoints, Timeline, Tags } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { usePlayerStore, TrackData } from "../store/playerStore";
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -146,16 +146,14 @@ const libraryTree = usePlayerStore((s) => s.libraryTree);
   });
 
   const gridTemplate = isMobile
-    ? `auto minmax(0, 1fr) ${visibleColumns.time ? "auto" : ""}`
-        .replace(/\s+/g, " ")
-        .trim()
+    ? `auto minmax(0, 1fr) auto`
     : `
         auto 
         minmax(0, 2fr) 
         ${visibleColumns.album ? "minmax(0, 1fr)" : ""} 
         ${visibleColumns.genre ? "minmax(0, 1fr)" : ""} 
         ${visibleColumns.date ? "80px" : ""} 
-        ${visibleColumns.time ? "100px" : ""}
+        ${visibleColumns.time ? "120px" : "80px"}
       `
         .replace(/\s+/g, " ")
         .trim();
@@ -174,23 +172,40 @@ const libraryTree = usePlayerStore((s) => s.libraryTree);
   };
 
   return (
-    <div className="relative flex h-[calc(100vh-60px)] animate-in fade-in duration-300">
-      <button
-        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        className={`absolute top-2 z-50 flex items-center justify-center w-6 h-6 rounded-full bg-surface border border-divider text-muted hover:text-brand-primary shadow-sm hover:scale-110 transition-all duration-300 ${
-          isSidebarOpen ? "left-[244px]" : "left-2"
+    <div className="relative flex h-[calc(100vh-60px)] animate-in fade-in duration-300  p-4 md:p-6 pb-32">
+      <div
+        className={`absolute top-2 z-50 transition-all duration-300 group/panel-toggle ${
+          isSidebarOpen ? "left-[270px]" : "left-2"
         }`}
-        title={
-          isSidebarOpen ? "Ocultar barra lateral" : "Mostrar barra lateral"
-        }
       >
-        <ChevronRight
-          size={14}
-          className={`transition-transform duration-300 ${
-            isSidebarOpen ? "rotate-180" : ""
-          }`}
-        />
-      </button>
+        <button
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          className="flex items-center justify-center w-6 h-6 rounded-full bg-surface border border-divider text-muted hover:text-brand-primary shadow-sm hover:scale-110 transition-all duration-300 cursor-pointer"
+          title={
+            isSidebarOpen
+              ? t("common.collapseSidebarPanel", "Ocultar panel lateral")
+              : t("common.expandSidebarPanel", "Mostrar panel lateral")
+          }
+          aria-label={
+            isSidebarOpen
+              ? t("common.collapseSidebarPanel", "Ocultar panel lateral")
+              : t("common.expandSidebarPanel", "Mostrar panel lateral")
+          }
+        >
+          <ChevronRight
+            size={14}
+            className={`transition-transform duration-300 ${
+              isSidebarOpen ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+
+        <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 px-2 py-1 bg-surface/95 backdrop-blur-md border border-divider text-content text-[11px] font-medium rounded-md shadow-lg opacity-0 pointer-events-none group-hover/panel-toggle:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
+          {isSidebarOpen
+            ? t("common.collapseSidebarPanel", "Ocultar panel lateral")
+            : t("common.expandSidebarPanel", "Mostrar panel lateral")}
+        </div>
+      </div>
 
       {isMobile && isSidebarOpen && (
         <div
@@ -352,10 +367,11 @@ const libraryTree = usePlayerStore((s) => s.libraryTree);
               )}
               extraActions={
                 <>
-                  {activePlugins["genre-explorer"] && (
+                  {activePlugins["graph-view"] && (
                     <div
                       className={`group relative flex items-center transition-all duration-300 ease-out overflow-hidden bg-surface border w-10 h-10 rounded-full border-divider cursor-pointer hover:border-brand-primary shadow-sm`}
                       onClick={() => handleGraphicalView()}
+                      title={t("plugins.graphView.title", "Vista Gráfica")}
                     >
                       <Waypoints
                         className="absolute transition-all duration-300 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-muted group-hover:text-brand-primary"
@@ -363,10 +379,23 @@ const libraryTree = usePlayerStore((s) => s.libraryTree);
                       />
                     </div>
                   )}
+                  {activePlugins["genre-explorer"] && (
+                    <div
+                      className={`group relative flex items-center transition-all duration-300 ease-out overflow-hidden bg-surface border w-10 h-10 rounded-full border-divider cursor-pointer hover:border-brand-primary shadow-sm`}
+                      onClick={() => navigate("/genres")}
+                      title={t("plugins.genreExplorer.title", "Explorador de Géneros")}
+                    >
+                      <Tags
+                        className="absolute transition-all duration-300 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-muted group-hover:text-brand-primary"
+                        size={19}
+                      />
+                    </div>
+                  )}
                   {activePlugins["timeline-view"] && !selectedAlbum && (
                     <div
                       className={`group relative flex items-center transition-all duration-300 ease-out overflow-hidden bg-surface border w-10 h-10 rounded-full border-divider cursor-pointer hover:border-brand-primary shadow-sm`}
                       onClick={() => handleTimelineView()}
+                      title={t("plugins.timelineView.title", "Línea de Tiempo")}
                     >
                       <Timeline
                         className="absolute transition-all duration-300 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-muted group-hover:text-brand-primary"

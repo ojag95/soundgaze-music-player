@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { usePlayerStore, TrackData } from "../../store/playerStore";
 import { useLibrarySettingsStore } from "../../store/librarySettingsStore";
 import { Play, Timeline, Disc3, X, ListPlus, Check } from "lucide-react";
@@ -14,7 +15,7 @@ interface TimelineAlbum {
   tracks: TrackData[];
 }
 
-const LazyImage = ({
+const LazyImage = React.memo(({
   src,
   alt,
   className,
@@ -23,51 +24,33 @@ const LazyImage = ({
   alt: string;
   className: string;
 }) => {
-  const [isVisible, setIsVisible] = useState(false);
-  const placeholderRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          setIsVisible(true);
-          observer.disconnect();
-        }
-      },
-      { root: null, rootMargin: "600px", threshold: 0 },
-    );
-    if (placeholderRef.current) observer.observe(placeholderRef.current);
-    return () => observer.disconnect();
-  }, []);
+  const [hasError, setHasError] = useState(false);
 
   return (
-    <div
-      ref={placeholderRef}
-      className="w-full h-full bg-surface/30 flex items-center justify-center"
-    >
-      {isVisible ? (
+    <div className="w-full h-full bg-surface/30 flex items-center justify-center relative overflow-hidden">
+      {!hasError ? (
         <img
           src={src}
           alt={alt}
           className={className}
           loading="lazy"
           decoding="async"
-          onError={(e) => {
-            e.currentTarget.style.display = "none";
-          }}
+          onError={() => setHasError(true)}
         />
       ) : (
         <Disc3 size={24} className="text-muted/30" />
       )}
     </div>
   );
-};
+});
 
 const TimelineView: React.FC = () => {
   const { t } = useTranslation();
 
   const libraryTree = usePlayerStore((s) => s.libraryTree);
   const selectedArtist = usePlayerStore((s) => s.selectedArtist);
+  const selectArtist = usePlayerStore((s) => s.selectArtist);
+  const selectAlbum = usePlayerStore((s) => s.selectAlbum);
   const currentTrack = usePlayerStore((s) => s.currentTrack);
   
   const playSpecific = usePlayerStore((s) => s.playSpecific);
@@ -79,6 +62,14 @@ const TimelineView: React.FC = () => {
 
   const [selectedAlbum, setSelectedAlbum] = useState<TimelineAlbum | null>(null);
   const [selectedYearFilter, setSelectedYearFilter] = useState<number | "all">("all");
+
+  const modalTracksParentRef = useRef<HTMLDivElement>(null);
+  const modalTracksVirtualizer = useVirtualizer({
+    count: selectedAlbum ? selectedAlbum.tracks.length : 0,
+    getScrollElement: () => modalTracksParentRef.current,
+    estimateSize: () => 48,
+    overscan: 5,
+  });
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -215,18 +206,33 @@ const TimelineView: React.FC = () => {
   };
 
   return (
-    <div className="relative w-full h-full bg-background flex flex-col animate-in fade-in duration-500 overflow-hidden">
+    <div className="relative w-full h-full bg-background flex flex-col animate-in fade-in duration-500 overflow-hidden pb-32">
       
       <div className="shrink-0 p-6 md:p-8 flex items-center gap-4 bg-background z-10 flex-wrap">
         <div className="w-12 h-12 rounded-xl bg-surface/80 backdrop-blur-md flex items-center justify-center border border-divider shadow-lg shrink-0">
           <Timeline size={24} className="text-brand-primary" />
         </div>
         <div>
-          <h1 className="text-2xl md:text-3xl font-extrabold text-content tracking-tight drop-shadow-md">
-            {selectedArtist
-              ? selectedArtist
-              : t("plugins.timelineView.title", "Línea de Tiempo Musical")}
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl md:text-3xl font-extrabold text-content tracking-tight drop-shadow-md">
+              {selectedArtist
+                ? selectedArtist
+                : t("plugins.timelineView.title", "Línea de Tiempo Musical")}
+            </h1>
+            {selectedArtist && (
+              <button
+                onClick={() => {
+                  selectArtist(null);
+                  selectAlbum(null);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1 bg-surface border border-divider text-muted hover:text-content hover:border-brand-primary/60 rounded-full text-xs font-semibold shadow-xs hover:shadow-sm active:scale-95 transition-all group cursor-pointer"
+                title={t("plugins.timelineView.clearFilterTooltip", "Quitar filtro de artista y ver todos los álbumes")}
+              >
+                <X size={13} className="text-muted group-hover:text-brand-primary transition-colors" />
+                <span>{t("common.viewAllLibrary", "Ver toda la biblioteca")}</span>
+              </button>
+            )}
+          </div>
           <p className="text-xs font-semibold text-muted uppercase tracking-widest mt-1 drop-shadow-md">
             {selectedArtist
               ? t("plugins.timelineView.artistTimeline", "Cronología del artista")
@@ -339,9 +345,11 @@ const TimelineView: React.FC = () => {
               
               <div className="flex gap-6 items-center">
                 {albums.map((album) => {
-                  const isAlbumPlaying = currentTrack 
-                    ? album.tracks.some(t => t.path === currentTrack.path) 
-                    : false;
+                  const isAlbumPlaying = Boolean(
+                    currentTrack &&
+                    currentTrack.artist === album.artist &&
+                    currentTrack.album === album.album
+                  );
                   
                   const isSelected = selectedAlbum?.id === album.id;
 
@@ -465,44 +473,61 @@ const TimelineView: React.FC = () => {
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
-                {selectedAlbum.tracks.map((track, index) => {
-                  const isPlaying = currentTrack?.path === track.path;
+              <div ref={modalTracksParentRef} className="flex-1 overflow-y-auto custom-scrollbar p-2">
+                <div
+                  style={{
+                    height: `${modalTracksVirtualizer.getTotalSize()}px`,
+                    width: "100%",
+                    position: "relative",
+                  }}
+                >
+                  {modalTracksVirtualizer.getVirtualItems().map((virtualRow) => {
+                    const track = selectedAlbum.tracks[virtualRow.index];
+                    const isPlaying = currentTrack?.path === track.path;
 
-                  return (
-                    <div
-                      key={track.path}
-                      onDoubleClick={() => playSpecific(track.path, selectedAlbum.tracks)}
-                      className={`group flex items-center gap-4 px-4 py-3 hover:bg-surface/50 rounded-xl transition-colors cursor-pointer ${
-                        isPlaying ? "bg-brand-primary/10" : ""
-                      }`}
-                    >
-                      <div className="w-8 text-center text-sm font-medium text-muted group-hover:hidden shrink-0">
-                        {isPlaying ? (
-                          <Play size={14} className="mx-auto text-brand-primary animate-pulse" fill="currentColor" />
-                        ) : (
-                          index + 1
-                        )}
-                      </div>
-                      <button
-                        className="w-8 text-center text-content hidden group-hover:block shrink-0"
-                        onClick={() => playSpecific(track.path, selectedAlbum.tracks)}
+                    return (
+                      <div
+                        key={track.path}
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          width: "100%",
+                          height: `${virtualRow.size}px`,
+                          transform: `translateY(${virtualRow.start}px)`,
+                        }}
+                        onDoubleClick={() => playSpecific(track.path, selectedAlbum.tracks)}
+                        className={`group flex items-center gap-4 px-4 py-2.5 hover:bg-surface/50 rounded-xl transition-colors cursor-pointer ${
+                          isPlaying ? "bg-brand-primary/10" : ""
+                        }`}
                       >
-                        <Play size={16} fill="currentColor" className="mx-auto" />
-                      </button>
+                        <div className="w-8 text-center text-sm font-medium text-muted group-hover:hidden shrink-0">
+                          {isPlaying ? (
+                            <Play size={14} className="mx-auto text-brand-primary animate-pulse" fill="currentColor" />
+                          ) : (
+                            virtualRow.index + 1
+                          )}
+                        </div>
+                        <button
+                          className="w-8 text-center text-content hidden group-hover:block shrink-0"
+                          onClick={() => playSpecific(track.path, selectedAlbum.tracks)}
+                        >
+                          <Play size={16} fill="currentColor" className="mx-auto" />
+                        </button>
 
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-semibold truncate ${isPlaying ? "text-brand-primary" : "text-content"}`}>
-                          {track.title}
-                        </p>
-                      </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm font-semibold truncate ${isPlaying ? "text-brand-primary" : "text-content"}`}>
+                            {track.title}
+                          </p>
+                        </div>
 
-                      <div className={`text-sm font-variant-numeric flex items-center gap-1 shrink-0 ${isPlaying ? "text-brand-primary" : "text-muted"}`}>
-                        {track.time}
+                        <div className={`text-sm font-variant-numeric flex items-center gap-1 shrink-0 ${isPlaying ? "text-brand-primary" : "text-muted"}`}>
+                          {track.time}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
             </div>
 

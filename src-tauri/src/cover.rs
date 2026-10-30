@@ -77,6 +77,24 @@ fn put_cached_cover(key: PathBuf, value: Option<(String, Vec<u8>)>) {
     }
 }
 
+pub fn invalidate_cover_cache(relative_path: &str) {
+    if let Ok(mut lock) = LAST_COVER_CACHE.lock() {
+        *lock = None;
+    }
+    if let Ok(mut lock) = COVER_CACHE.lock() {
+        if let Some(cache) = lock.as_mut() {
+            if let Some(base) = get_music_dir() {
+                let clean_rel = relative_path.trim_start_matches('/');
+                let full_path = Path::new(&base).join(clean_rel);
+                if let Some(pos) = cache.order.iter().position(|k| k == &full_path) {
+                    cache.order.remove(pos);
+                }
+                cache.entries.remove(&full_path);
+            }
+        }
+    }
+}
+
 pub fn save_temp_cover(relative_path: &str) -> Option<String> {
 
     if let Ok(cache) = LAST_COVER_CACHE.lock() {

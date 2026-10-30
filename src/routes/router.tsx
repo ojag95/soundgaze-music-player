@@ -5,7 +5,7 @@ import Library from "../pages/Library";
 
 const GraphView = React.lazy(() => import("../plugins/GraphView/GraphView"));
 const TimelineView = React.lazy(() => import("../plugins/TimelineView/TimelineView"));
-const GenreDetail = React.lazy(() => import("../pages/GenreDetail"));
+const GenreExplorer = React.lazy(() => import("../plugins/GenreExplorer/GenreExplorer"));
 const Playlists = React.lazy(() => import("../pages/Playlist"));
 
 export const router = createMemoryRouter([
@@ -26,8 +26,16 @@ export const router = createMemoryRouter([
         element: <TimelineView />,
       },
       {
+        path: "genres",
+        element: <GenreExplorer />,
+      },
+      {
+        path: "genres/:genreId",
+        element: <GenreExplorer />,
+      },
+      {
         path: "genre/:genreId",
-        element: <GenreDetail />,
+        element: <GenreExplorer />,
       },
 
       {

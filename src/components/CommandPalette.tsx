@@ -8,6 +8,7 @@ import {
   Library,
   Waypoints,
   Timeline,
+  Tags,
   Settings,
   ListMusic,
   Sun,
@@ -16,6 +17,7 @@ import {
   RefreshCw,
   List,
   Command,
+  FileEdit,
 } from "lucide-react";
 import { useUIStore } from "../store/uiStore";
 import { usePlayerStore, TrackData } from "../store/playerStore";
@@ -34,7 +36,7 @@ interface PaletteItem {
 }
 
 export default function CommandPalette() {
-  const { isCommandPaletteOpen, closeCommandPalette, openSettings, toggleQueue } = useUIStore();
+  const { isCommandPaletteOpen, closeCommandPalette, openSettings, toggleQueue, openTagEditor } = useUIStore();
   const {
     libraryTree,
     artists,
@@ -45,6 +47,7 @@ export default function CommandPalette() {
     selectPlaylist,
     toggleShuffle,
     isShuffle,
+    currentTrack,
   } = usePlayerStore();
   const { isDark, setBaseTheme } = useThemeStore();
   const { scanDatabase } = useLibrarySettingsStore();
@@ -82,7 +85,8 @@ export default function CommandPalette() {
   }, [libraryTree]);
 
   const actions: PaletteItem[] = useMemo(() => {
-    const isGraphActive = isPluginActive("genre-explorer");
+    const isGraphActive = isPluginActive("graph-view");
+    const isGenresActive = isPluginActive("genre-explorer");
     const isTimelineActive = isPluginActive("timeline-view");
 
     const items: PaletteItem[] = [
@@ -109,6 +113,20 @@ export default function CommandPalette() {
         icon: <Waypoints size={18} className="text-brand-primary" />,
         onSelect: () => {
           navigate("/graphical-view");
+          closeCommandPalette();
+        },
+      });
+    }
+
+    if (isGenresActive) {
+      items.push({
+        id: "action-genres",
+        category: "action",
+        title: t("commandPalette.goToGenres", "Ir al Explorador de Géneros"),
+        subtitle: t("commandPalette.goToGenresDesc", "Explora la biblioteca agrupada por géneros musicales"),
+        icon: <Tags size={18} className="text-brand-primary" />,
+        onSelect: () => {
+          navigate("/genres");
           closeCommandPalette();
         },
       });
@@ -192,11 +210,27 @@ export default function CommandPalette() {
       }
     );
 
+    if (currentTrack && isPluginActive("tag-editor")) {
+      items.push({
+        id: "action-edit-current-track-tags",
+        category: "action",
+        title: t("plugins.tagEditor.editCurrentTrack", "Editar etiquetas de la canción actual"),
+        subtitle: `${currentTrack.title} — ${currentTrack.artist}`,
+        icon: <FileEdit size={18} className="text-brand-primary" />,
+        onSelect: () => {
+          openTagEditor(currentTrack.path);
+          closeCommandPalette();
+        },
+      });
+    }
+
     return items;
   }, [
     isPluginActive,
     isDark,
     isShuffle,
+    currentTrack,
+    openTagEditor,
     t,
     navigate,
     closeCommandPalette,
