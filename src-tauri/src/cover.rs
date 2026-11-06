@@ -1,8 +1,10 @@
 use crate::mpd_client::get_music_dir;
 use lofty::prelude::*;
 use lofty::probe::Probe;
+use std::collections::hash_map::DefaultHasher;
 use std::collections::{HashMap, VecDeque};
 use std::fs;
+use std::hash::{Hash, Hasher};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
@@ -81,10 +83,17 @@ pub fn invalidate_cover_cache(relative_path: &str) {
     if let Ok(mut lock) = LAST_COVER_CACHE.lock() {
         *lock = None;
     }
+    let clean_rel = relative_path.trim_start_matches('/');
+    let mut hasher = DefaultHasher::new();
+    clean_rel.hash(&mut hasher);
+    let hash = hasher.finish();
+    let temp_dir = std::env::temp_dir().join("soundgaze_covers");
+    let _ = fs::remove_file(temp_dir.join(format!("cover_{:016x}.jpg", hash)));
+    let _ = fs::remove_file(temp_dir.join(format!("cover_{:016x}.png", hash)));
+
     if let Ok(mut lock) = COVER_CACHE.lock() {
         if let Some(cache) = lock.as_mut() {
             if let Some(base) = get_music_dir() {
-                let clean_rel = relative_path.trim_start_matches('/');
                 let full_path = Path::new(&base).join(clean_rel);
                 if let Some(pos) = cache.order.iter().position(|k| k == &full_path) {
                     cache.order.remove(pos);
@@ -118,7 +127,19 @@ pub fn save_temp_cover(relative_path: &str) -> Option<String> {
                     } else {
                         "jpg"
                     };
-                    let temp_file_path = std::env::temp_dir().join(format!("soundgaze_cover_current.{}", ext));
+
+                    let mut hasher = DefaultHasher::new();
+                    clean_rel.hash(&mut hasher);
+                    let hash = hasher.finish();
+
+                    let temp_dir = std::env::temp_dir().join("soundgaze_covers");
+                    let _ = fs::create_dir_all(&temp_dir);
+                    let temp_file_path = temp_dir.join(format!("cover_{:016x}.{}", hash, ext));
+
+                    if temp_file_path.is_file() {
+                        return Some(format!("file://{}", temp_file_path.display()));
+                    }
+
                     if let Ok(mut file) = fs::File::create(&temp_file_path) {
                         if file.write_all(pic.data()).is_ok() {
                             return Some(format!("file://{}", temp_file_path.display()));

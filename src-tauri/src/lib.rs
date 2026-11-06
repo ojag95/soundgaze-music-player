@@ -17,7 +17,6 @@ use tag_editor::{get_track_metadata, update_track_metadata};
 use tray::setup_tray;
 
 use mpd::{Idle, Subsystem};
-use souvlaki::MediaControls;
 use std::sync::Mutex;
 use std::thread;
 use tauri::{Emitter, Manager};
@@ -59,15 +58,10 @@ pub fn run() {
         .setup(|app| {
             let app_handle = app.handle().clone();
 
-            // Configuración de MPRIS (Media Controls)
-            if let Some(controls) = setup_mpris(app_handle.clone()) {
-                app.manage(controls);
-            }
+            setup_mpris(app_handle.clone());
 
-            // Configuración de Bandeja del Sistema (Tray)
             setup_tray(app)?;
 
-            // Hilo observador de MPD (Idle watcher)
             thread::spawn(move || loop {
                 let state = app_handle.state::<MpdConfig>();
                 let address = state.address.lock().unwrap().clone();
@@ -78,19 +72,14 @@ pub fn run() {
                         if let Ok(new_state) = get_mpd_state(&address, &password) {
                             let _ = app_handle.emit("mpd-update", new_state.clone());
 
-                            if let Some(controls_state) = app_handle.try_state::<Mutex<MediaControls>>() {
-                                if let Ok(mut controls) = controls_state.lock() {
-                                    let cover_uri = new_state
-                                        .current_track
-                                        .as_ref()
-                                        .and_then(|t| cover::save_temp_cover(&t.path));
+                            let cover_uri = new_state
+                                .current_track
+                                .as_ref()
+                                .and_then(|t| cover::save_temp_cover(&t.path));
 
-                                    update_mpris_state(&mut controls, &new_state, cover_uri.as_deref());
-                                }
-                            }
+                            update_mpris_state(&app_handle, &new_state, cover_uri.as_deref());
                         }
                     } else {
-                        // Si falla el wait (desconexión o error en el socket de MPD), esperar para evitar 100% CPU
                         thread::sleep(std::time::Duration::from_millis(500));
                     }
                 } else {

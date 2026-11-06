@@ -116,8 +116,8 @@
   },
   "about": {
     "title": "About",
-    "version": "Version 1.0.4",
-    "installerVersion": "Installer version: 1.0.4",
+    "version": "Version 1.0.5",
+    "installerVersion": "Installer version: 1.0.5",
     "readChangelog": "Read the changelog.",
     "checkForUpdates": "Check for updates",
     "autoUpdates": "Automatic updates",
